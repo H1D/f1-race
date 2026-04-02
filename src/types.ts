@@ -13,8 +13,8 @@ export interface TransformComponent {
 }
 
 export interface VelocityComponent {
-  forward: number; // speed along heading
-  lateral: number; // speed perpendicular to heading (drift)
+  x: number; // world-space velocity X
+  y: number; // world-space velocity Y
   angular: number; // radians/sec turning rate
 }
 
@@ -27,10 +27,13 @@ export interface MotorComponent {
 }
 
 export interface BoatPhysicsComponent {
-  dragForward: number; // ~0.02 — low, boat glides
-  dragLateral: number; // ~0.8 — high, resists sideways drift
-  angularDamping: number; // ~0.7 — smooths rotation
-  steerForce: number; // radians/s^2 from full steering input
+  forwardDrag: number; // ~0.015 — low, boat glides
+  lateralDrag: number; // ~0.95 — high, resists sideways drift
+  angularDamping: number; // ~0.4 — smooths rotation
+  turnTorque: number; // turning force
+  turnSpeedReference: number; // speed at which turning reaches full effectiveness
+  thrustForce: number; // forward thrust power
+  maxSpeed: number; // hard speed cap
 }
 
 export interface RenderComponent {

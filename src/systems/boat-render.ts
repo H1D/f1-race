@@ -1,5 +1,8 @@
 import type { Entity } from "../types";
 
+const boatImage = new Image();
+boatImage.src = "boat.png";
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
@@ -23,23 +26,22 @@ export function renderBoat(ctx: CanvasRenderingContext2D, entity: Entity, alpha:
   ctx.translate(x, y);
   ctx.rotate(angle);
 
-  // Boat hull — pointed front, flat back
-  const hw = r.width / 2;
-  const hh = r.height / 2;
-
-  ctx.fillStyle = r.color;
-  ctx.beginPath();
-  ctx.moveTo(hw, 0); // bow (front point)
-  ctx.lineTo(-hw * 0.6, -hh); // top-left
-  ctx.lineTo(-hw, -hh * 0.6); // back-left
-  ctx.lineTo(-hw, hh * 0.6); // back-right
-  ctx.lineTo(-hw * 0.6, hh); // bottom-right
-  ctx.closePath();
-  ctx.fill();
-
-  // Cabin accent
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
-  ctx.fillRect(-hw * 0.2, -hh * 0.35, hw * 0.5, hh * 0.7);
+  if (boatImage.complete && boatImage.naturalWidth > 0) {
+    ctx.drawImage(boatImage, -r.width / 2, -r.height / 2, r.width, r.height);
+  } else {
+    // Fallback: procedural boat while image loads
+    const hw = r.width / 2;
+    const hh = r.height / 2;
+    ctx.fillStyle = r.color;
+    ctx.beginPath();
+    ctx.moveTo(hw, 0);
+    ctx.lineTo(-hw * 0.6, -hh);
+    ctx.lineTo(-hw, -hh * 0.6);
+    ctx.lineTo(-hw, hh * 0.6);
+    ctx.lineTo(-hw * 0.6, hh);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.restore();
 }

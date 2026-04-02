@@ -3,9 +3,6 @@ import type { Entity, TrackBounds } from "../types";
 export function resolveCollisions(entity: Entity, track: TrackBounds): void {
   const pos = entity.transform.pos;
   const vel = entity.velocity;
-  const angle = entity.transform.angle;
-  const headX = Math.cos(angle);
-  const headY = Math.sin(angle);
 
   // Must stay inside outer boundary
   let collided = false;
@@ -29,7 +26,6 @@ export function resolveCollisions(entity: Entity, track: TrackBounds): void {
   // Must stay outside inner island
   const inner = track.inner;
   if (pos.x > inner.minX && pos.x < inner.maxX && pos.y > inner.minY && pos.y < inner.maxY) {
-    // Find nearest edge to push out to
     const dLeft = pos.x - inner.minX;
     const dRight = inner.maxX - pos.x;
     const dTop = pos.y - inner.minY;
@@ -44,13 +40,10 @@ export function resolveCollisions(entity: Entity, track: TrackBounds): void {
     collided = true;
   }
 
-  // On collision: dampen velocity (bounce effect)
+  // On collision: dampen world velocity
   if (collided) {
-    // Convert to world velocity, dampen, convert back
-    const vx = vel.forward * headX - vel.lateral * headY;
-    const vy = vel.forward * headY + vel.lateral * headX;
-    vel.forward = (vx * headX + vy * headY) * 0.3;
-    vel.lateral = (-vx * headY + vy * headX) * 0.3;
+    vel.x *= 0.3;
+    vel.y *= 0.3;
     vel.angular *= 0.5;
   }
 }

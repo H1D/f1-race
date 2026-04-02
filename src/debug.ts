@@ -1,7 +1,7 @@
-import { boatParams } from "./boat/boat";
+import type { BoatPhysicsComponent } from "./types";
 
 interface Slider {
-  key: keyof typeof boatParams;
+  key: keyof BoatPhysicsComponent;
   label: string;
   min: number;
   max: number;
@@ -10,13 +10,9 @@ interface Slider {
 
 interface Preset {
   name: string;
-  params: typeof boatParams;
+  params: BoatPhysicsComponent;
 }
 
-// Speedboat: snappy arcade racer. High thrust + high lateral drag
-// keeps it glued to its heading even at speed. Crank turn torque
-// so you can whip around corners without waiting.
-// Best for: racing, action gameplay
 const speedboat: Preset = {
   name: "Speedboat",
   params: {
@@ -30,10 +26,6 @@ const speedboat: Preset = {
   },
 };
 
-// Tugboat: heavy and deliberate. Very low forward drag gives a
-// long coast — you commit to your momentum. Low turn torque +
-// high angular damping means you plan turns ahead of time.
-// Best for: sim feel, cargo/delivery gameplay
 const tugboat: Preset = {
   name: "Tugboat",
   params: {
@@ -47,10 +39,6 @@ const tugboat: Preset = {
   },
 };
 
-// Dinghy: light and twitchy. Lower lateral drag lets it slide
-// and drift through turns. High turn torque on a low speed ref
-// makes it pivot fast even at low speed. Fun but chaotic.
-// Best for: casual play, tight spaces
 const dinghy: Preset = {
   name: "Dinghy",
   params: {
@@ -64,10 +52,6 @@ const dinghy: Preset = {
   },
 };
 
-// Yacht: the goldilocks preset. Smooth long glide from low
-// forward drag, strong lateral grip, moderate turning that
-// rewards flowing lines over sharp cuts. Feels premium.
-// Best for: balanced default, exploration
 const yacht: Preset = {
   name: "Yacht",
   params: {
@@ -93,7 +77,7 @@ const sliders: Slider[] = [
   { key: "maxSpeed", label: "Max Speed", min: 2, max: 40, step: 1 },
 ];
 
-export function createDebugMenu(): HTMLElement {
+export function createDebugMenu(params: BoatPhysicsComponent): HTMLElement {
   const panel = document.createElement("div");
   panel.id = "debug-panel";
   panel.innerHTML = `
@@ -122,7 +106,7 @@ export function createDebugMenu(): HTMLElement {
 
   function syncSliders() {
     panel.querySelectorAll<HTMLInputElement>("input[type=range]").forEach((input, i) => {
-      input.value = String(boatParams[sliders[i]!.key]);
+      input.value = String(params[sliders[i]!.key]);
       (input.nextElementSibling as HTMLElement).textContent = input.value;
     });
   }
@@ -136,7 +120,7 @@ export function createDebugMenu(): HTMLElement {
     btn.textContent = preset.name;
     btn.style.cssText = btnStyle;
     btn.addEventListener("click", () => {
-      Object.assign(boatParams, preset.params);
+      Object.assign(params, preset.params);
       syncSliders();
     });
     presetRow.appendChild(btn);
@@ -155,14 +139,14 @@ export function createDebugMenu(): HTMLElement {
     input.min = String(s.min);
     input.max = String(s.max);
     input.step = String(s.step);
-    input.value = String(boatParams[s.key]);
+    input.value = String(params[s.key]);
 
     const val = document.createElement("span");
     val.className = "val";
-    val.textContent = String(boatParams[s.key]);
+    val.textContent = String(params[s.key]);
 
     input.addEventListener("input", () => {
-      boatParams[s.key] = parseFloat(input.value);
+      params[s.key] = parseFloat(input.value);
       val.textContent = input.value;
     });
 
@@ -170,17 +154,17 @@ export function createDebugMenu(): HTMLElement {
     panel.appendChild(row);
   }
 
-  // Reset button (resets to Yacht — the balanced default)
+  // Reset button
   const reset = document.createElement("button");
   reset.textContent = "Reset";
   reset.style.cssText = "margin-top:8px;background:#333;color:#eee;border:1px solid #555;padding:4px 12px;border-radius:4px;cursor:pointer;font:12px monospace;";
   reset.addEventListener("click", () => {
-    Object.assign(boatParams, yacht.params);
+    Object.assign(params, yacht.params);
     syncSliders();
   });
   panel.appendChild(reset);
 
-  // Toggle visibility with backtick
+  // Toggle visibility with backtick key
   let visible = false;
   panel.style.display = "none";
 

@@ -1,5 +1,6 @@
 import type { Entity, InputState } from "../types";
 
+// Ported from boat branch — world-space velocity with local-frame decomposition
 export function updatePhysics(entity: Entity, input: InputState, dt: number): void {
   const motor = entity.motor;
   const phys = entity.boatPhysics;
@@ -8,45 +9,54 @@ export function updatePhysics(entity: Entity, input: InputState, dt: number): vo
   const vel = entity.velocity;
   const tf = entity.transform;
 
-  // Store previous state for interpolation
+  // Store previous state for render interpolation
   tf.prevPos.x = tf.pos.x;
   tf.prevPos.y = tf.pos.y;
   tf.prevAngle = tf.angle;
 
-  // 1. Motor voltage ramp (first-order response)
+  // Motor voltage ramp (from idea.md motor & voltage mechanic)
   motor.targetVoltage = input.throttle ? 1 : 0;
   const rampRate = motor.targetVoltage > motor.voltage ? motor.rampUp : motor.rampDown;
-  const voltageDiff = motor.targetVoltage - motor.voltage;
-  motor.voltage += Math.sign(voltageDiff) * Math.min(rampRate * dt, Math.abs(voltageDiff));
+  const vDiff = motor.targetVoltage - motor.voltage;
+  motor.voltage += Math.sign(vDiff) * Math.min(rampRate * dt, Math.abs(vDiff));
 
-  // 2. Steering torque (scales with forward speed — can't spin a stationary boat)
-  const speedFactor = Math.min(1, Math.abs(vel.forward) / 80);
-  vel.angular += input.steeringAccum * phys.steerForce * speedFactor * dt;
+  // Heading vectors
+  const fwdX = Math.cos(tf.angle);
+  const fwdY = Math.sin(tf.angle);
+  const rightX = -Math.sin(tf.angle);
+  const rightY = Math.cos(tf.angle);
 
-  // 3. Thrust along heading
-  const thrust = motor.voltage * motor.maxForce;
-  const headX = Math.cos(tf.angle);
-  const headY = Math.sin(tf.angle);
+  // Decompose world velocity into local frame (dot product)
+  let forwardSpeed = vel.x * fwdX + vel.y * fwdY;
+  let lateralSpeed = vel.x * rightX + vel.y * rightY;
 
-  // Convert local velocity to world space
-  let vx = vel.forward * headX - vel.lateral * headY;
-  let vy = vel.forward * headY + vel.lateral * headX;
+  // Anisotropic drag — high lateral kills drift, low forward lets boat glide
+  forwardSpeed -= forwardSpeed * phys.forwardDrag;
+  lateralSpeed -= lateralSpeed * phys.lateralDrag;
 
-  // Apply thrust in heading direction
-  vx += headX * thrust * dt;
-  vy += headY * thrust * dt;
+  // Thrust (modulated by motor voltage)
+  forwardSpeed += motor.voltage * phys.thrustForce * dt;
 
-  // 4. Decompose back to local frame
-  vel.forward = vx * headX + vy * headY;
-  vel.lateral = -vx * headY + vy * headX;
+  // Steering torque — scales with speed (can't turn a stationary boat)
+  const speedFactor = Math.min(1, Math.abs(forwardSpeed) / phys.turnSpeedReference);
+  vel.angular += input.steeringAccum * phys.turnTorque * speedFactor * dt;
 
-  // 5. Anisotropic drag — pow(1 - drag, dt * 60) for framerate independence
-  vel.forward *= (1 - phys.dragForward) ** (dt * 60);
-  vel.lateral *= (1 - phys.dragLateral) ** (dt * 60);
-  vel.angular *= (1 - phys.angularDamping) ** (dt * 60);
+  // Angular damping
+  vel.angular -= vel.angular * phys.angularDamping;
 
-  // 6. Integrate position (convert local velocity back to world)
-  tf.pos.x += (vel.forward * headX - vel.lateral * headY) * dt;
-  tf.pos.y += (vel.forward * headY + vel.lateral * headX) * dt;
-  tf.angle += vel.angular * dt;
+  // Recompose to world space
+  vel.x = fwdX * forwardSpeed + rightX * lateralSpeed;
+  vel.y = fwdY * forwardSpeed + rightY * lateralSpeed;
+
+  // Max speed cap
+  const speed = Math.sqrt(vel.x ** 2 + vel.y ** 2);
+  if (speed > phys.maxSpeed) {
+    vel.x *= phys.maxSpeed / speed;
+    vel.y *= phys.maxSpeed / speed;
+  }
+
+  // Integrate position and rotation
+  tf.pos.x += vel.x;
+  tf.pos.y += vel.y;
+  tf.angle += vel.angular;
 }

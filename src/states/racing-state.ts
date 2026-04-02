@@ -13,12 +13,14 @@ import { resolveCollisions } from "../systems/collision";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
 import { renderBackground } from "../systems/background-render";
+import { createDebugMenu } from "../debug";
 
 export class RacingState implements GameState {
   private gameCtx!: GameContext;
   private player!: Entity;
   private track!: TrackBounds;
   private camera!: CameraState;
+  private debugPanel: HTMLElement | null = null;
 
   enter(ctx: GameContext) {
     this.gameCtx = ctx;
@@ -30,9 +32,15 @@ export class RacingState implements GameState {
       angle: this.track.startAngle,
       zoom: 1.4,
     };
+    if (this.player.boatPhysics) {
+      this.debugPanel = createDebugMenu(this.player.boatPhysics);
+    }
   }
 
-  exit() {}
+  exit() {
+    this.debugPanel?.remove();
+    document.getElementById("debug-toggle")?.remove();
+  }
 
   update(dt: number, input: InputState) {
     updatePhysics(this.player, input, dt);
@@ -64,7 +72,7 @@ export class RacingState implements GameState {
 
   private renderHUD(ctx: CanvasRenderingContext2D, w: number) {
     const vel = this.player.velocity;
-    const speed = Math.sqrt(vel.forward ** 2 + vel.lateral ** 2);
+    const speed = Math.sqrt(vel.x ** 2 + vel.y ** 2);
     const motor = this.player.motor;
 
     ctx.font = "14px monospace";
