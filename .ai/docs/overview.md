@@ -1,6 +1,6 @@
 # Boat Race
 
-Top-down 2D two-player boat racing game set in the Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), a data-driven powerup system with lifecycle hooks, event logging, and a collapsible live debug panel with per-boat physics tuning.
+Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (P1 WASD, P2 Arrows) with physics-driven handling on user-editable polygon river tracks, world-space anisotropic drag, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), pooled particle effects (wake spray + bow wave + collision sparks), a data-driven powerup system with lifecycle hooks, event logging, an in-game map editor with freehand drawing and bridges, and collapsible live debug panels.
 
 ## Stack
 
@@ -25,11 +25,13 @@ bun run fmt        # oxfmt auto-format
 ## Project Structure
 
 ```toon
-dirs[7]{path,purpose}:
+dirs[9]{path,purpose}:
   src/,game source code
   src/boat/,boat sprite (boat.png) + legacy standalone boat module
   src/states/,game state implementations (menu / racing)
   src/systems/,ECS-style systems (physics / collision / camera / rendering / powerups)
+  src/map/,polygon map data model + geometry + renderer
+  src/editor/,in-game map editor (outline draw + attributes + bridges)
   src/powerups/,powerup registry + definitions
   src/powerups/definitions/,individual powerup type definitions
   public/,static HTML
