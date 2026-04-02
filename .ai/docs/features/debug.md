@@ -21,6 +21,7 @@ files[2]{path,purpose}:
 - **Per-boat sections**: independent sliders and presets for each boat's physics
 - 4 presets: Yacht (balanced default), Speedboat (fast + grippy), Dinghy (twitchy + drifty), Tugboat (heavy + slow)
 - **Show Collision** checkbox: toggles `debugSettings.showBoatCollision` — renders collision radius circles around boats
+- **Show Velocity** checkbox: toggles `debugSettings.showBoatVelocity` — renders velocity arrow from boat center showing direction and magnitude
 - 7 sliders per boat: forwardDrag, lateralDrag, angularDamping, thrustForce, turnTorque, turnSpeedReference, maxSpeed
 - Reset button snaps back to Yacht defaults (per boat)
 - **Per-powerup tabs**: each tab has core knobs (Duration, Rarity, Max stacks) + auto-generated sliders from `def.tunables` (e.g. speedMult, thrustMult)
