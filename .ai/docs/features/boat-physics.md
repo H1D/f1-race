@@ -23,12 +23,13 @@ files[4]{path,purpose}:
 - Steering scales with `min(1, |forwardSpeed| / turnSpeedReference)` — can't turn a stationary boat
 - Integration: `pos += vel` (velocity is in px/frame units at 60Hz)
 
-## Default Values (Yacht preset from boat branch)
+## Default Values (Yacht preset)
 
-- `forwardDrag: 0.015`, `lateralDrag: 0.95` (63:1 ratio)
+- `forwardDrag: 0.012`, `lateralDrag: 0.95` (~79:1 ratio)
 - `angularDamping: 0.4`, `turnTorque: 3.5`, `turnSpeedReference: 3.0`
-- `thrustForce: 6.0`, `maxSpeed: 10.0`
+- `thrustForce: 6.0`, `maxSpeed: 12.0`
 - Motor ramp: up 1.5/s, down 2.5/s
+- Reverse: `targetVoltage` = -0.4 (slower than forward's 1.0)
 
 ## Gotchas
 

@@ -25,7 +25,7 @@ modules[8]{module,depends_on}:
   camera,types (CameraState + Entity)
   boat-render,types (Entity) + boat.png sprite
   background-render,types (TrackBounds)
-  debug,types (BoatPhysicsComponent)
+  debug,types (BoatPhysicsComponent + CameraState)
 ```
 
 ## Assets

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Top-down 2D boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Features world-space anisotropic drag physics (ported from boat branch), motor voltage ramp, speed-dependent steering, and a live debug panel with 4 boat presets.
+Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), and a live debug panel with per-boat tuning + 4 presets.
 
 ## Commands
 
@@ -16,34 +16,35 @@ After any code change, verify with: `bun run lint && bun run build`
 
 ## Architecture
 
-ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain data bags, systems are pure functions. State machine manages game screens (Menu → Racing).
+ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain data bags, systems are pure functions. State machine manages game screens (Menu → Racing). Two-player input via `DualInput` type.
 
 **Key components:**
 
 | Component | Path | Responsibility |
 |-----------|------|----------------|
-| main | `src/main.ts` | Canvas setup, wires input/state/loop |
+| main | `src/main.ts` | Canvas setup, wires dual-player input/state/loop |
 | game-loop | `src/game-loop.ts` | Fixed 60Hz timestep + render interpolation |
 | state-manager | `src/state-manager.ts` | Game state lifecycle (enter/exit/update/render) |
 | physics | `src/systems/physics.ts` | World-space decompose/recompose + anisotropic drag + motor ramp |
 | collision | `src/systems/collision.ts` | AABB canal boundary enforcement (world-space vel) |
-| camera | `src/systems/camera.ts` | Smooth follow with look-ahead + rotation |
+| camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
 | boat-render | `src/systems/boat-render.ts` | boat.png sprite with interpolation + procedural fallback |
 | background-render | `src/systems/background-render.ts` | Water + island + wall + grid |
-| debug | `src/debug.ts` | Live physics tuning panel with sliders + 4 presets |
+| debug | `src/debug.ts` | Camera mode toggle + per-boat physics tuning with sliders + 4 presets |
 
 **Data flow:**
-1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, input)`
-2. RacingState runs `updatePhysics()` then `resolveCollisions()`
+1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
+2. RacingState runs `updatePhysics()` + `resolveCollisions()` for each boat
 3. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-4. Render: clear canvas → camera transform → background → boat sprite → HUD
+4. Render: clear canvas → `updateCamera()` → `applyCameraTransform()` → background → both boats → restore → HUD
 
 **Patterns:**
 - **ECS-lite**: Entity = data bag, Systems = pure functions
 - **Fixed timestep + interpolation**: Physics at 60Hz, rendering interpolates with alpha
 - **World-space velocity**: Stored as (vx,vy), decomposed to local each frame — turning creates natural drift
-- **Motor voltage ramp**: Throttle sets `targetVoltage`, ramps up (1.5/s) and down (2.5/s)
-- **Anisotropic drag**: Forward drag 0.015 (glide) + lateral drag 0.95 (resist drift), 63:1 ratio
+- **Motor voltage ramp**: Throttle sets `targetVoltage`, ramps up (1.5/s) and down (2.5/s). Reverse targets -0.4
+- **Anisotropic drag**: Forward drag 0.012 (glide) + lateral drag 0.95 (resist drift), ~79:1 ratio
+- **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (dynamic zoom, no rotation) — smooth 500ms transition
 
 ## Key Rules
 
@@ -57,16 +58,19 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - `MotorComponent.maxForce` is vestigial — thrust comes from `boatPhysics.thrustForce`
 - Debug menu (backtick key) mutates `boatPhysics` component directly via `Object.assign`
 - `build.ts` and `serve.ts` must copy `src/boat/boat.png` to `dist/`
+- Input system returns `DualInput` (`{ player1, player2 }`) — P1=WASD, P2=Arrows
+- `GameState.update()` takes `DualInput`, not single `InputState`
 
 ## Features
 
 | Feature | Status | Key Files |
 |---------|--------|-----------|
 | Boat Physics | active | `src/systems/physics.ts`, `src/entity.ts`, `src/debug.ts` |
-| Racing | active | `src/states/racing-state.ts`, `src/systems/camera.ts` |
+| Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` |
+| Camera | active | `src/systems/camera.ts` |
 | Track | wip | `src/track.ts`, `src/systems/background-render.ts` |
-| Input | stable | `src/input.ts` |
-| Debug | stable | `src/debug.ts` |
+| Input | active | `src/input.ts` |
+| Debug | active | `src/debug.ts` |
 
 ## Project Structure
 
