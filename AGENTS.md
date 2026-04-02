@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), and a live debug panel with per-boat tuning + 4 presets.
+Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), pooled particle effects (wake spray + collision sparks), and a live debug panel with per-boat tuning + 4 presets.
 
 ## Commands
 
@@ -26,17 +26,18 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | game-loop | `src/game-loop.ts` | Fixed 60Hz timestep + render interpolation |
 | state-manager | `src/state-manager.ts` | Game state lifecycle (enter/exit/update/render) |
 | physics | `src/systems/physics.ts` | World-space decompose/recompose + anisotropic drag + motor ramp |
-| collision | `src/systems/collision.ts` | AABB canal boundary enforcement (world-space vel) |
+| collision | `src/systems/collision.ts` | AABB canal boundary enforcement + CollisionResult out-param |
 | camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
 | boat-render | `src/systems/boat-render.ts` | boat.png sprite with interpolation + procedural fallback |
 | background-render | `src/systems/background-render.ts` | Water + island + wall + grid |
+| particles | `src/systems/particles.ts` | Pooled particle effects — wake spray + collision sparks (512-slot pool) |
 | debug | `src/debug.ts` | Camera mode toggle + per-boat physics tuning with sliders + 4 presets |
 
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
-2. RacingState runs `updatePhysics()` + `resolveCollisions()` for each boat
+2. RacingState runs `updatePhysics()` + `resolveCollisions()` for each boat, then particle emitters + `updateParticles()`
 3. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-4. Render: clear canvas → `updateCamera()` → `applyCameraTransform()` → background → both boats → restore → HUD
+4. Render: clear canvas → `updateCamera()` → `applyCameraTransform()` → background → particles → both boats → restore → HUD
 
 **Patterns:**
 - **ECS-lite**: Entity = data bag, Systems = pure functions
@@ -45,6 +46,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Motor voltage ramp**: Throttle sets `targetVoltage`, ramps up (1.5/s) and down (2.5/s). Reverse targets -0.4
 - **Anisotropic drag**: Forward drag 0.012 (glide) + lateral drag 0.95 (resist drift), ~79:1 ratio
 - **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (dynamic zoom, no rotation) — smooth 500ms transition
+- **Zero-allocation particle pool**: 512 pre-allocated slots reused via `active` flag — no GC pressure
 
 ## Key Rules
 
@@ -60,6 +62,8 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - `build.ts` and `serve.ts` must copy `src/boat/boat.png` to `dist/`
 - Input system returns `DualInput` (`{ player1, player2 }`) — P1=WASD, P2=Arrows
 - `GameState.update()` takes `DualInput`, not single `InputState`
+- `renderParticles()` must be called between `applyCameraTransform()` and `ctx.restore()` — world-space rendering
+- `CollisionResult` is a mutable out-param — `resolveCollisions()` resets and populates it each frame
 
 ## Features
 

@@ -96,6 +96,31 @@ export interface CameraState {
   _transitionElapsed: number; // internal: ms elapsed since last mode switch
 }
 
+// === Particle (lightweight, pooled) ===
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number; // remaining seconds, counts down
+  maxLife: number; // initial life (alpha = life/maxLife)
+  size: number;
+  r: number; // 0-255
+  g: number;
+  b: number;
+  active: boolean;
+}
+
+// === Collision result (mutable out-param) ===
+export interface CollisionResult {
+  collided: boolean;
+  contactX: number;
+  contactY: number;
+  normalX: number; // wall normal pointing away from surface
+  normalY: number;
+  impactSpeed: number; // pre-damping speed
+}
+
 // === Track boundary ===
 export interface TrackBounds {
   outer: { minX: number; minY: number; maxX: number; maxY: number };

@@ -10,7 +10,7 @@ cpSync("public/index.html", "dist/index.html");
 cpSync("src/boat/boat.png", "dist/boat.png");
 
 Bun.serve({
-  port: 3000,
+  port: Number(process.env.PORT || 3000),
   fetch(req) {
     const url = new URL(req.url);
     let path = url.pathname === "/" ? "/index.html" : url.pathname;
@@ -19,4 +19,5 @@ Bun.serve({
   },
 });
 
-console.log("Dev server running at http://localhost:3000");
+const port = Number(process.env.PORT || 3000);
+console.log(`Dev server running at http://localhost:${port}`);

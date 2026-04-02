@@ -17,14 +17,15 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[8]{module,depends_on}:
+modules[9]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
-  racing-state,entity + track + physics + collision + camera + boat-render + background-render + debug
+  racing-state,entity + track + physics + collision + camera + boat-render + background-render + particles + debug
   physics,types (Entity + InputState)
-  collision,types (Entity + TrackBounds)
+  collision,types (Entity + TrackBounds + CollisionResult)
   camera,types (CameraState + Entity)
   boat-render,types (Entity) + boat.png sprite
   background-render,types (TrackBounds)
+  particles,types (Entity + Particle + CollisionResult)
   debug,types (BoatPhysicsComponent + CameraState)
 ```
 
