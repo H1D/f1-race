@@ -56,7 +56,7 @@ export function createDefaultMap(): MapData {
     ],
     worldSize: 1400,
     startPos: { x: 880, y: 0 },
-    startAngle: Math.PI / 2,
+    startAngle: -Math.PI / 2,
     checkpoints: [
       // CP1: top
       { a: { x: 0, y: -750 }, b: { x: 0, y: -520 } },

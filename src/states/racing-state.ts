@@ -304,12 +304,51 @@ export class RacingState implements GameState {
     );
   }
 
+  private nearGate(boat: Entity, gate: { a: { x: number; y: number }; b: { x: number; y: number } }): boolean {
+    const pos = boat.transform.pos;
+    const mx = (gate.a.x + gate.b.x) / 2;
+    const my = (gate.a.y + gate.b.y) / 2;
+    const gateLen = Math.hypot(gate.b.x - gate.a.x, gate.b.y - gate.a.y);
+    const dist = Math.hypot(pos.x - mx, pos.y - my);
+    return dist < gateLen * 1.5;
+  }
+
   private updateCheckpoints(boat: Entity, nextCheckpoint: number): number {
     const cps = this.map.checkpoints;
-    if (!cps || nextCheckpoint >= cps.length) return nextCheckpoint;
-    if (this.crossesGate(boat, cps[nextCheckpoint]!)) {
+    if (!cps || cps.length === 0) return nextCheckpoint;
+
+    // Crossed the expected next checkpoint
+    if (nextCheckpoint < cps.length && this.crossesGate(boat, cps[nextCheckpoint]!)) {
       return nextCheckpoint + 1;
     }
+
+    // Crossed a later checkpoint nearby — missed one
+    for (let i = nextCheckpoint + 1; i < cps.length; i++) {
+      if (this.nearGate(boat, cps[i]!) && this.crossesGate(boat, cps[i]!)) {
+        this.toasts.push({
+          name: `Checkpoint ${nextCheckpoint + 1} missed!`,
+          icon: "⚠",
+          color: "#ee3344",
+          elapsed: 0,
+          duration: 1.5,
+          boat,
+        });
+        return nextCheckpoint;
+      }
+    }
+
+    // Crossed finish line without all checkpoints
+    if (nextCheckpoint < cps.length && this.nearGate(boat, this.map.finishLine) && this.crossesGate(boat, this.map.finishLine)) {
+      this.toasts.push({
+        name: `Checkpoint ${nextCheckpoint + 1} missed!`,
+        icon: "⚠",
+        color: "#ee3344",
+        elapsed: 0,
+        duration: 1.5,
+        boat,
+      });
+    }
+
     return nextCheckpoint;
   }
 
