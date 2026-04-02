@@ -1,6 +1,7 @@
 import type { Entity, MapData, Vec2 } from "../types";
 import { isOnWater } from "../map/map-data";
 import { pushIntoPolygon, nearestPointOnSegment } from "../map/geometry";
+import { renderAttributeMarker } from "../map/map-renderer";
 
 export type FloodState = "idle" | "flooding" | "recovering";
 
@@ -231,35 +232,22 @@ export function renderFloodScreen(
   ctx.restore();
 }
 
-/** Render lifted attribute markers during flood */
+/** Render attributes floating on top of the flood water — gentle bob at their position */
 export function renderFloodedAttributes(
   ctx: CanvasRenderingContext2D,
   map: MapData,
   flood: FloodSystem,
 ): void {
-  if (!flood.affectObjects || flood.waterLevel <= 0.1) return;
+  if (!flood.affectObjects || flood.waterLevel <= 0.05) return;
 
-  const t = Date.now() / 800;
-  const bobOffset = Math.sin(t) * 3 * flood.waterLevel;
+  const t = Date.now() / 700;
 
-  for (const attr of map.attributes) {
-    // Shadow
-    ctx.fillStyle = `rgba(0,0,0,${0.2 * flood.waterLevel})`;
-    ctx.beginPath();
-    ctx.ellipse(attr.position.x, attr.position.y + 4, 12, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
+  for (let i = 0; i < map.attributes.length; i++) {
+    const attr = map.attributes[i];
+    const bob = Math.sin(t + i * 1.3) * 4 * flood.waterLevel;
+    const sway = Math.sin(t * 0.6 + i * 2.1) * 3 * flood.waterLevel;
 
-    // Lifted marker
-    ctx.save();
-    ctx.translate(0, -8 * flood.waterLevel + bobOffset);
-    // The actual attribute is already rendered by renderMap, so we just
-    // need to add a visual "lift" effect — a highlight ring
-    ctx.strokeStyle = `rgba(100,200,255,${0.4 * flood.waterLevel})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(attr.position.x, attr.position.y, 18, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    renderAttributeMarker(ctx, attr.position.x + sway, attr.position.y + bob, attr.type);
   }
 }
 

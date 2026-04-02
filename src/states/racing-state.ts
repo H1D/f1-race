@@ -355,7 +355,6 @@ export class RacingState implements GameState {
 
     // World (polygon map)
     renderMap(ctx, this.map);
-    renderFloodedAttributes(ctx, this.map, this.flood);
 
     // Zones (ground level, under boats)
     const zones = this.entityManager.getWithComponent("zone");
@@ -389,6 +388,15 @@ export class RacingState implements GameState {
 
     // Flood overlay in screen space (bottom → top)
     renderFloodScreen(ctx, this.flood, w, h);
+
+    // Attributes float on top of the flood water
+    if (this.flood.waterLevel > 0.05 && this.flood.affectObjects) {
+      ctx.save();
+      // Re-apply camera transform so attributes render in world space on top of flood
+      applyCameraTransform(ctx, this.camera, w, h);
+      renderFloodedAttributes(ctx, this.map, this.flood);
+      ctx.restore();
+    }
 
     this.renderHUD(ctx, w);
     this.renderFloodHUD(ctx, w, h);

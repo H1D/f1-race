@@ -11,12 +11,18 @@ const ATTR_COLORS: Record<string, string> = {
   "albert-heijn": "#00a0e4",
   effendi: "#e06030",
   "doctor-falafel": "#40a040",
+  "herring-kiosk": "#c08030",
+  "bike-shop": "#e04080",
+  "cheese-shop": "#e0c020",
 };
 
 const ATTR_LABELS: Record<string, string> = {
   "albert-heijn": "AH",
   effendi: "EF",
   "doctor-falafel": "DF",
+  "herring-kiosk": "HK",
+  "bike-shop": "BS",
+  "cheese-shop": "CS",
 };
 
 const CORNER_RADIUS = 60;

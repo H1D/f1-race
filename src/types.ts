@@ -185,7 +185,7 @@ export interface TrackBounds {
 }
 
 // === Map data ===
-export type AttributeType = "albert-heijn" | "effendi" | "doctor-falafel";
+export type AttributeType = "albert-heijn" | "effendi" | "doctor-falafel" | "herring-kiosk" | "bike-shop" | "cheese-shop";
 
 export interface MapAttribute {
   id: number;
