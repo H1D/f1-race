@@ -597,6 +597,7 @@ export class RacingState implements GameState {
       this.map,
       this.powerupDefs,
       dt,
+      flooded,
     );
     this.entityManager.addMany(newAttrPickups);
 

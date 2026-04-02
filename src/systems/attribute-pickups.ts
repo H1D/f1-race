@@ -12,12 +12,16 @@ const ATTRIBUTE_POWERUP_MAP: Partial<Record<AttributeType, string>> = {
   "kingsday":      "kingsday-invasion",
 };
 
+/** Powerups that only spawn their orb while the flood is active. */
+const FLOOD_ONLY_POWERUPS = new Set(["kingsday-invasion"]);
+
 export interface AttributePickupState {
   attributeId: number;
   powerupId: string;
   spawnPos: Vec2;    // nearest water position to the attribute
   cooldown: number;  // seconds remaining; 0 = ready to spawn
   entityId: number | null;
+  floodOnly: boolean; // orb only appears while flooding is active
 }
 
 export interface AttributePickupSystem {
@@ -49,6 +53,7 @@ export function createAttributePickupSystem(map: MapData): AttributePickupSystem
       spawnPos: findNearbyWaterPos(attr.position, map),
       cooldown: 0,
       entityId: null,
+      floodOnly: FLOOD_ONLY_POWERUPS.has(powerupId),
     });
   }
   return { states };
@@ -57,6 +62,7 @@ export function createAttributePickupSystem(map: MapData): AttributePickupSystem
 /**
  * Tick the attribute pickup system:
  * - Detect when an active orb has been picked up (markedForRemoval) → start cooldown
+ * - Flood-only orbs are removed when flood ends; no cooldown (respawn on next flood)
  * - Count down cooldown
  * - When ready, spawn a new orb tagged "attr-pickup"
  * Returns newly created pickup entities to be added to the entity manager.
@@ -67,22 +73,29 @@ export function updateAttributePickups(
   map: MapData,
   definitions: Map<string, PowerupDefinition>,
   dt: number,
+  floodActive = false,
 ): Entity[] {
   const newEntities: Entity[] = [];
 
   for (const state of system.states) {
     if (state.entityId !== null) {
-      // Check if orb was consumed
       const orb = entities.find((e) => e.id === state.entityId);
       if (!orb || orb.markedForRemoval) {
+        // Orb was picked up — start cooldown (flood-only: no cooldown, just wait for next flood)
         state.entityId = null;
-        state.cooldown = RESPAWN_COOLDOWN;
+        state.cooldown = state.floodOnly ? 0 : RESPAWN_COOLDOWN;
+      } else if (state.floodOnly && !floodActive) {
+        // Flood ended while orb was still live — remove it
+        orb.markedForRemoval = { reason: "flood-ended" };
+        state.entityId = null;
+        state.cooldown = 0;
       }
-      // else still active — nothing to do
     } else if (state.cooldown > 0) {
       state.cooldown = Math.max(0, state.cooldown - dt);
     } else {
-      // Spawn a new orb
+      // Flood-only: don't spawn unless flood is active
+      if (state.floodOnly && !floodActive) continue;
+
       const def = definitions.get(state.powerupId);
       if (!def) continue;
       const orb = createPickupEntity(state.spawnPos.x, state.spawnPos.y, def);

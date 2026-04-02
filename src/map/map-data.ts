@@ -45,8 +45,8 @@ export function createDefaultMap(): MapData {
       // Island (inside island)
       { id: 3, type: "herring-kiosk", position: { x: 400, y: -300 } },
       { id: 4, type: "bike-shop", position: { x: -200, y: 100 } },
-      // Outer land — south-east corner
-      { id: 5, type: "kingsday", position: { x: 900, y: 600 } },
+      // Outer land — just outside the right straight (flood-only accessible)
+      { id: 5, type: "kingsday", position: { x: 1150, y: 0 } },
     ],
     bridges: [
       // Across the straight
