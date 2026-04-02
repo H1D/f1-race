@@ -29,9 +29,9 @@ const ATTR_LABELS: Record<string, string> = {
   "bike-shop": "BS",
 };
 
-const FLAG_POLE_HEIGHT = 24;
-const FLAG_WIDTH = 14;
-const FLAG_HEIGHT = 10;
+const FLAG_POLE_HEIGHT = 32;
+const FLAG_WIDTH = 18;
+const FLAG_HEIGHT = 13;
 
 function renderFlag(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
   // Pole (horizontal, pointing right)

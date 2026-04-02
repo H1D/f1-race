@@ -85,6 +85,14 @@ import {
   type FloodSystem,
   type BoatPenalty,
 } from "../systems/flooding";
+import {
+  createTourBoats,
+  updateTourBoats,
+  renderTourBoats,
+  collideTourBoats,
+  TOUR_BOAT_RADIUS,
+  type TourBoat,
+} from "../systems/tour-boats";
 
 /** Derive TrackBounds from polygon MapData for powerup spawn point generation. */
 function trackBoundsFromMap(map: MapData): TrackBounds {
@@ -132,6 +140,8 @@ export class RacingState implements GameState {
   private floodPanel: HTMLElement | null = null;
   private penalty1!: BoatPenalty;
   private penalty2!: BoatPenalty;
+  private tourBoats!: TourBoat[];
+  private tourCenterline!: { x: number; y: number }[];
   private particles!: Particle[];
   private toasts: PowerupToast[] = [];
   private sound!: SoundSystem;
@@ -156,6 +166,10 @@ export class RacingState implements GameState {
   private p2Laps = 0;
   private raceTimer = 0;
   private winnerTime = 0;
+  private winnerPenalty = 0;
+  private p1PenaltyTime = 0;
+  private p2PenaltyTime = 0;
+  private readonly checkpointPenalty = 3; // seconds per missed checkpoint
   private collisionResult: CollisionResult = {
     collided: false,
     contactX: 0,
@@ -176,6 +190,7 @@ export class RacingState implements GameState {
       this.map.startAngle,
     );
     this.player1.render!.color = "#e04040";
+    this.player1.render!.spriteId = "p1";
 
     // Player 2 (yellow, Arrows) — offset 50 units to the side
     const offsetX = Math.cos(this.map.startAngle + Math.PI / 2) * 50;
@@ -186,6 +201,7 @@ export class RacingState implements GameState {
       this.map.startAngle,
     );
     this.player2.render!.color = "#e0c040";
+    this.player2.render!.spriteId = "p2";
 
     this.camera = {
       x: this.map.startPos.x,
@@ -203,6 +219,10 @@ export class RacingState implements GameState {
     this.flood = createFloodSystem();
     this.penalty1 = createBoatPenalty();
     this.penalty2 = createBoatPenalty();
+
+    const tourData = createTourBoats(this.map, 2);
+    this.tourBoats = tourData.boats;
+    this.tourCenterline = tourData.centerline;
     this.floodPanel = createFloodSettingsPanel(this.flood);
 
     if (this.player1.boatPhysics) {
@@ -299,12 +319,53 @@ export class RacingState implements GameState {
     );
   }
 
+  private nearGate(boat: Entity, gate: { a: { x: number; y: number }; b: { x: number; y: number } }): boolean {
+    const pos = boat.transform.pos;
+    const mx = (gate.a.x + gate.b.x) / 2;
+    const my = (gate.a.y + gate.b.y) / 2;
+    const gateLen = Math.hypot(gate.b.x - gate.a.x, gate.b.y - gate.a.y);
+    const dist = Math.hypot(pos.x - mx, pos.y - my);
+    return dist < gateLen * 1.5;
+  }
+
+  private addCheckpointPenalty(boat: Entity, nextCheckpoint: number) {
+    if (boat === this.player1) {
+      this.p1PenaltyTime += this.checkpointPenalty;
+    } else {
+      this.p2PenaltyTime += this.checkpointPenalty;
+    }
+    this.toasts.push({
+      name: `Checkpoint ${nextCheckpoint + 1} missed! +${this.checkpointPenalty}s`,
+      icon: "⚠",
+      color: "#ee3344",
+      elapsed: 0,
+      duration: 1.5,
+      boat,
+    });
+  }
+
   private updateCheckpoints(boat: Entity, nextCheckpoint: number): number {
     const cps = this.map.checkpoints;
-    if (!cps || nextCheckpoint >= cps.length) return nextCheckpoint;
-    if (this.crossesGate(boat, cps[nextCheckpoint]!)) {
+    if (!cps || cps.length === 0) return nextCheckpoint;
+
+    // Crossed the expected next checkpoint (must be near it)
+    if (nextCheckpoint < cps.length && this.nearGate(boat, cps[nextCheckpoint]!) && this.crossesGate(boat, cps[nextCheckpoint]!)) {
       return nextCheckpoint + 1;
     }
+
+    // Crossed a later checkpoint nearby — missed one
+    for (let i = nextCheckpoint + 1; i < cps.length; i++) {
+      if (this.nearGate(boat, cps[i]!) && this.crossesGate(boat, cps[i]!)) {
+        this.addCheckpointPenalty(boat, nextCheckpoint);
+        return nextCheckpoint;
+      }
+    }
+
+    // Crossed finish line without all checkpoints
+    if (nextCheckpoint < cps.length && this.nearGate(boat, this.map.finishLine) && this.crossesGate(boat, this.map.finishLine)) {
+      this.addCheckpointPenalty(boat, nextCheckpoint);
+    }
+
     return nextCheckpoint;
   }
 
@@ -364,6 +425,7 @@ export class RacingState implements GameState {
       updatePhysics(this.player1, input.player1, dt);
       resolveMapCollisions(this.player1, this.map, flooded, this.wallResult);
       if (this.wallResult.collided) {
+        emitCollisionSparks(this.particles, this.wallResult);
         playSound(this.sound, "wall-collision", {
           intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
         });
@@ -378,6 +440,7 @@ export class RacingState implements GameState {
       updatePhysics(this.player2, input.player2, dt);
       resolveMapCollisions(this.player2, this.map, flooded, this.wallResult);
       if (this.wallResult.collided) {
+        emitCollisionSparks(this.particles, this.wallResult);
         playSound(this.sound, "wall-collision", {
           intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
         });
@@ -444,6 +507,37 @@ export class RacingState implements GameState {
 
     updateParticles(this.particles, dt);
 
+    // Tour boats — move along river + collide with players
+    updateTourBoats(this.tourBoats, this.tourCenterline, dt);
+
+    const p1Pos = this.player1.transform.pos;
+    const p1Col = collideTourBoats(this.tourBoats, p1Pos.x, p1Pos.y, this.player1.velocity.x, this.player1.velocity.y, 20);
+    if (p1Col.hit) {
+      this.player1.velocity.x = p1Col.velX;
+      this.player1.velocity.y = p1Col.velY;
+      this.collisionResult.collided = true;
+      this.collisionResult.contactX = p1Col.contactX;
+      this.collisionResult.contactY = p1Col.contactY;
+      this.collisionResult.normalX = p1Col.normalX;
+      this.collisionResult.normalY = p1Col.normalY;
+      this.collisionResult.impactSpeed = p1Col.impactSpeed;
+      emitCollisionSparks(this.particles, this.collisionResult);
+    }
+
+    const p2Pos = this.player2.transform.pos;
+    const p2Col = collideTourBoats(this.tourBoats, p2Pos.x, p2Pos.y, this.player2.velocity.x, this.player2.velocity.y, 20);
+    if (p2Col.hit) {
+      this.player2.velocity.x = p2Col.velX;
+      this.player2.velocity.y = p2Col.velY;
+      this.collisionResult.collided = true;
+      this.collisionResult.contactX = p2Col.contactX;
+      this.collisionResult.contactY = p2Col.contactY;
+      this.collisionResult.normalX = p2Col.normalX;
+      this.collisionResult.normalY = p2Col.normalY;
+      this.collisionResult.impactSpeed = p2Col.impactSpeed;
+      emitCollisionSparks(this.particles, this.collisionResult);
+    }
+
     // Checkpoint + finish line tracking
     if (this.raceStartGrace <= 0 && !this.winner) {
       this.p1NextCheckpoint = this.updateCheckpoints(
@@ -461,6 +555,7 @@ export class RacingState implements GameState {
         if (this.p1Laps >= this.totalLaps) {
           this.winner = "Player 1";
           this.winnerTime = this.raceTimer;
+          this.winnerPenalty = this.p1PenaltyTime;
           this.winTime = 0;
           this.gameLog.log("Player 1 wins!", "system");
         } else {
@@ -476,6 +571,7 @@ export class RacingState implements GameState {
         if (this.p2Laps >= this.totalLaps) {
           this.winner = "Player 2";
           this.winnerTime = this.raceTimer;
+          this.winnerPenalty = this.p2PenaltyTime;
           this.winTime = 0;
           this.gameLog.log("Player 2 wins!", "system");
         } else {
@@ -730,6 +826,9 @@ export class RacingState implements GameState {
     // Particles (world-space)
     renderParticles(ctx, this.particles);
 
+    // Tour boats (before player boats so players render on top)
+    renderTourBoats(ctx, this.tourBoats);
+
     this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
     this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
 
@@ -759,6 +858,7 @@ export class RacingState implements GameState {
     if (this.flood.waterLevel > 0.05) {
       ctx.save();
       applyCameraTransform(ctx, this.camera, w, h);
+      renderTourBoats(ctx, this.tourBoats);
       this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
       this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
       renderBridges(ctx, this.map);
@@ -806,23 +906,40 @@ export class RacingState implements GameState {
       ctx.fillText(`${this.winner} Wins!`, w / 2, h / 2 - 30);
 
       // Winner time
-      const wMins = Math.floor(this.winnerTime / 60);
-      const wSecs = Math.floor(this.winnerTime % 60);
-      const wMs = Math.floor((this.winnerTime % 1) * 100);
-      const wTimeStr = `${wMins}:${String(wSecs).padStart(2, "0")}.${String(wMs).padStart(2, "0")}`;
+      const totalTime = this.winnerTime + this.winnerPenalty;
+      const fmtTime = (t: number) => {
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        const ms = Math.floor((t % 1) * 100);
+        return `${m}:${String(s).padStart(2, "0")}.${String(ms).padStart(2, "0")}`;
+      };
+
       ctx.font = "bold 32px monospace";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText(wTimeStr, w / 2, h / 2 + 30);
+      ctx.fillText(fmtTime(totalTime), w / 2, h / 2 + 30);
+
+      // Show penalty breakdown if any
+      let nextY = h / 2 + 65;
+      if (this.winnerPenalty > 0) {
+        ctx.font = "18px monospace";
+        ctx.fillStyle = "rgba(255,100,100,0.9)";
+        ctx.fillText(
+          `Race: ${fmtTime(this.winnerTime)}  +  Penalty: ${fmtTime(this.winnerPenalty)}`,
+          w / 2, nextY,
+        );
+        nextY += 35;
+      }
 
       // Subtitle
       ctx.font = "bold 22px monospace";
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText("RACE FINISHED", w / 2, h / 2 + 70);
+      ctx.fillText("RACE FINISHED", w / 2, nextY);
+      nextY += 50;
 
       if (this.winTime > 2) {
         ctx.font = "18px monospace";
         ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(this.winTime * 4) * 0.3})`;
-        ctx.fillText("Press SPACE to restart", w / 2, h / 2 + 120);
+        ctx.fillText("Press SPACE to restart", w / 2, nextY);
       }
 
       ctx.globalAlpha = 1;
@@ -860,9 +977,9 @@ export class RacingState implements GameState {
     ctx.font = "bold 65px monospace";
     const p1Left = this.totalLaps - this.p1Laps;
     const p2Left = this.totalLaps - this.p2Laps;
-    ctx.fillStyle = "rgba(224,64,64,0.6)";
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillText(`P1: ${p1Left} lap${p1Left !== 1 ? "s" : ""} left`, w / 2, 70);
-    ctx.fillStyle = "rgba(224,192,64,0.6)";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillText(
       `P2: ${p2Left} lap${p2Left !== 1 ? "s" : ""} left`,
       w / 2,

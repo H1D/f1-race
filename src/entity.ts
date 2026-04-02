@@ -30,8 +30,8 @@ export function createBoatEntity(x: number, y: number, angle = 0): Entity {
       maxSpeed: 10.0,
     },
     render: {
-      width: 64,
-      height: 32,
+      width: 90,
+      height: 45,
       color: "#e04040",
     },
     tags: new Set(["player"]),

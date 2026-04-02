@@ -281,7 +281,7 @@ export function renderPickupToasts(
     ctx.textBaseline = "middle";
 
     const label = `${toast.icon}  ${toast.name}`;
-    ctx.font = "bold 14px monospace";
+    ctx.font = "bold 20px monospace";
     const textW = ctx.measureText(label).width;
     const pad = 10;
     const pillW = textW + pad * 2;
