@@ -6,6 +6,7 @@ import type {
   FloodState,
   GameContext,
   GameState,
+  MapData,
   Particle,
   PowerupDefinition,
   SpawnManagerState,
@@ -13,12 +14,12 @@ import type {
 } from "../types";
 import { LAYER_BOAT } from "../types";
 import { createBoatEntity } from "../entity";
-import { createPlaceholderTrack } from "../track";
+import { getCurrentMap } from "../map/map-data";
 import { updatePhysics } from "../systems/physics";
-import { resolveCollisions } from "../systems/collision";
+import { resolveMapCollisions } from "../systems/collision";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
-import { renderBackground } from "../systems/background-render";
+import { renderMap, renderBridges } from "../map/map-renderer";
 import { createDebugMenu } from "../debug";
 import { createEntityManager, type EntityManager } from "../entity-manager";
 import { createSpawnManagerState, updatePowerupSpawning } from "../systems/powerup-spawn";
@@ -38,15 +39,42 @@ import {
   renderParticles,
   updateParticles,
 } from "../systems/particles";
+import { EditorState } from "../editor/editor-state";
+
+/** Derive TrackBounds from polygon MapData for powerup spawn point generation. */
+function trackBoundsFromMap(map: MapData): TrackBounds {
+  const xs = map.outline.map((p) => p.x);
+  const ys = map.outline.map((p) => p.y);
+  const ixs = map.island.map((p) => p.x);
+  const iys = map.island.map((p) => p.y);
+  return {
+    outer: {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    },
+    inner: {
+      minX: Math.min(...ixs),
+      minY: Math.min(...iys),
+      maxX: Math.max(...ixs),
+      maxY: Math.max(...iys),
+    },
+    startX: map.startPos.x,
+    startY: map.startPos.y,
+    startAngle: map.startAngle,
+  };
+}
 
 export class RacingState implements GameState {
   private gameCtx!: GameContext;
   private player1!: Entity;
   private player2!: Entity;
-  private track!: TrackBounds;
+  private map!: MapData;
   private camera!: CameraState;
   private debugPanel: HTMLElement | null = null;
   private powerupDebugPanel: HTMLElement | null = null;
+  private editorBtn: HTMLButtonElement | null = null;
   private entityManager!: EntityManager;
   private spawnState!: SpawnManagerState;
   private floodState!: FloodState;
@@ -67,33 +95,46 @@ export class RacingState implements GameState {
 
   enter(ctx: GameContext) {
     this.gameCtx = ctx;
-    this.track = createPlaceholderTrack();
+    this.map = getCurrentMap();
 
-    // Boat 1 (WASD) — red
-    this.player1 = createBoatEntity(this.track.startX, this.track.startY, this.track.startAngle);
+    // Player 1 (red, WASD)
+    this.player1 = createBoatEntity(
+      this.map.startPos.x,
+      this.map.startPos.y,
+      this.map.startAngle,
+    );
+    this.player1.render!.color = "#e04040";
 
-    // Boat 2 (Arrows) — offset and yellow
-    this.player2 = createBoatEntity(this.track.startX, this.track.startY + 50, this.track.startAngle);
-    if (this.player2.render) {
-      this.player2.render.color = "#e0c040";
-    }
+    // Player 2 (yellow, Arrows) — offset 50 units to the side
+    const offsetX = Math.cos(this.map.startAngle + Math.PI / 2) * 50;
+    const offsetY = Math.sin(this.map.startAngle + Math.PI / 2) * 50;
+    this.player2 = createBoatEntity(
+      this.map.startPos.x + offsetX,
+      this.map.startPos.y + offsetY,
+      this.map.startAngle,
+    );
+    this.player2.render!.color = "#e0c040";
 
     this.camera = {
-      x: this.track.startX,
-      y: this.track.startY,
-      angle: 0,
+      x: this.map.startPos.x,
+      y: this.map.startPos.y,
+      angle: this.map.startAngle,
       zoom: 1.4,
       followTarget: null,
       entities: [this.player1, this.player2],
       _prevTarget: null,
-      _transitionElapsed: 999,
+      _transitionElapsed: 1000,
       _zoomVelocity: 0,
     };
 
     this.particles = createParticlePool(512);
 
     if (this.player1.boatPhysics) {
-      this.debugPanel = createDebugMenu(this.player1.boatPhysics, this.camera, this.player2.boatPhysics ?? undefined);
+      this.debugPanel = createDebugMenu(
+        this.player1.boatPhysics,
+        this.camera,
+        this.player2.boatPhysics,
+      );
     }
 
     // Powerup setup — both boats can pick up
@@ -106,7 +147,8 @@ export class RacingState implements GameState {
     this.entityManager.add(this.player1);
     this.entityManager.add(this.player2);
 
-    this.spawnState = createSpawnManagerState(this.track);
+    const trackBounds = trackBoundsFromMap(this.map);
+    this.spawnState = createSpawnManagerState(trackBounds);
     this.floodState = { active: false, level: 0, timeRemaining: 0 };
     this.powerupDefs = loadPowerupDefinitions();
     this.gameLog = createGameLog();
@@ -122,11 +164,23 @@ export class RacingState implements GameState {
     this.debugPanel?.appendChild(this.powerupDebugPanel);
 
     this.gameLog.log("Race started", "system");
+
+    // Editor button
+    this.editorBtn = document.createElement("button");
+    this.editorBtn.textContent = "Editor";
+    this.editorBtn.id = "editor-open-btn";
+    this.editorBtn.style.cssText =
+      "position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.6);color:#f88;border:1px solid #555;padding:6px 14px;border-radius:6px;cursor:pointer;font:13px monospace;z-index:50;";
+    this.editorBtn.addEventListener("click", () => {
+      this.gameCtx.switchState(new EditorState());
+    });
+    document.body.appendChild(this.editorBtn);
   }
 
   exit() {
     this.powerupDebugPanel?.remove(); // clears interval timer
     this.debugPanel?.remove();
+    this.editorBtn?.remove();
     document.getElementById("debug-toggle")?.remove();
   }
 
@@ -136,24 +190,22 @@ export class RacingState implements GameState {
 
     // Player 1: physics → collision → particles
     updatePhysics(this.player1, input.player1, dt);
-    resolveCollisions(this.player1, this.track, this.collisionResult);
+    resolveMapCollisions(this.player1, this.map);
     emitWake(this.particles, this.player1);
     emitBowSpray(this.particles, this.player1);
-    emitCollisionSparks(this.particles, this.collisionResult);
 
     // Player 2: physics → collision → particles
     updatePhysics(this.player2, input.player2, dt);
-    resolveCollisions(this.player2, this.track, this.collisionResult);
+    resolveMapCollisions(this.player2, this.map);
     emitWake(this.particles, this.player2);
     emitBowSpray(this.particles, this.player2);
-    emitCollisionSparks(this.particles, this.collisionResult);
 
-    // Particle physics
     updateParticles(this.particles, dt);
 
     // Powerup spawning
+    const trackBounds = trackBoundsFromMap(this.map);
     const newPickups = updatePowerupSpawning(
-      this.entityManager.entities, this.track, this.floodState,
+      this.entityManager.entities, trackBounds, this.floodState,
       this.powerupDefs, dt, this.spawnState,
     );
     this.entityManager.addMany(newPickups);
@@ -228,16 +280,14 @@ export class RacingState implements GameState {
     const w = this.gameCtx.canvas.width;
     const h = this.gameCtx.canvas.height;
 
-    // Clear
     ctx.fillStyle = "#0a1628";
     ctx.fillRect(0, 0, w, h);
 
-    // Camera
     updateCamera(this.camera, w, h, this.lastDt);
     applyCameraTransform(ctx, this.camera, w, h);
 
-    // World
-    renderBackground(ctx, this.track);
+    // World (polygon map)
+    renderMap(ctx, this.map);
 
     // Zones (ground level, under boats)
     const zones = this.entityManager.getWithComponent("zone");
@@ -252,18 +302,17 @@ export class RacingState implements GameState {
     const obstacles = this.entityManager.getByTag("obstacle");
     renderObstacles(ctx, obstacles, alpha);
 
-    // Particles (world-space, between background and boats)
+    // Particles (world-space)
     renderParticles(ctx, this.particles);
 
     renderBoat(ctx, this.player1, alpha);
     renderBoat(ctx, this.player2, alpha);
+    renderBridges(ctx, this.map);
 
     renderActiveEffectVisuals(ctx, this.player1, this.powerupDefs, alpha);
 
-    // Restore to screen space
     ctx.restore();
 
-    // HUD
     this.renderHUD(ctx, w);
     renderEffectsHUD(ctx, this.player1, this.powerupDefs, w);
 
@@ -272,19 +321,18 @@ export class RacingState implements GameState {
   }
 
   private renderHUD(ctx: CanvasRenderingContext2D, w: number) {
+    const v1 = this.player1.velocity;
+    const s1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);
+    const v2 = this.player2.velocity;
+    const s2 = Math.sqrt(v2.x ** 2 + v2.y ** 2);
+
     ctx.font = "14px monospace";
     ctx.textAlign = "right";
 
-    // Player 1 stats
-    const vel1 = this.player1.velocity;
-    const speed1 = Math.sqrt(vel1.x ** 2 + vel1.y ** 2);
-    ctx.fillStyle = "rgba(224,64,64,0.7)";
-    ctx.fillText(`P1 speed: ${speed1.toFixed(0)}`, w - 20, 30);
+    ctx.fillStyle = "rgba(224,64,64,0.6)";
+    ctx.fillText(`P1: ${s1.toFixed(0)}`, w - 20, 30);
 
-    // Player 2 stats
-    const vel2 = this.player2.velocity;
-    const speed2 = Math.sqrt(vel2.x ** 2 + vel2.y ** 2);
-    ctx.fillStyle = "rgba(224,192,64,0.7)";
-    ctx.fillText(`P2 speed: ${speed2.toFixed(0)}`, w - 20, 50);
+    ctx.fillStyle = "rgba(224,192,64,0.6)";
+    ctx.fillText(`P2: ${s2.toFixed(0)}`, w - 20, 50);
   }
 }

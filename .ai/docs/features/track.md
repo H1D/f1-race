@@ -1,25 +1,30 @@
-# Track
+# Track / Map System
 
-Canal track definition and rendering. Currently a placeholder rectangular moat (outer boundary around inner island).
+Polygon-based river channel map. Water flows between an outer bank polygon and an inner island polygon. Both rendered with rounded corners (`arcTo` radius 60px). Replaces the legacy AABB TrackBounds system.
 
 ```toon
-status: wip
+status: active
 depends_on[0]:
-entry_point: src/track.ts
+entry_point: src/map/map-data.ts
 
-files[2]{path,purpose}:
-  src/track.ts,track boundary factory (placeholder rectangular canal)
-  src/systems/background-render.ts,renders water + island + walls + grid
+files[4]{path,purpose}:
+  src/map/map-data.ts,MapData singleton + createDefaultMap + land/water/bridge queries
+  src/map/map-renderer.ts,renders green land + water channel + grid + walls + bridges + attributes
+  src/map/geometry.ts,"point-in-polygon, edge normals, push in/out, path processing, polygon offset"
+  src/types.ts,MapData + MapAttribute + Bridge + AttributeType interfaces
 ```
 
 ## Design Notes
 
-- Track is defined as two AABB rectangles: outer (canal boundary) and inner (island)
-- Canal is ~200 units wide on each side
-- Start position is at top center of the canal (0, -300), facing right
-- Planned: Amsterdam canal layout with curves, multiple paths, and flood zones
+- **MapData**: `outline` (outer bank Vec2[]) + `island` (inner land Vec2[]) + `attributes` + `bridges` + `worldSize` + `startPos`
+- **Water**: inside outline AND outside island. `isOnWater()` = `pointInPolygon(outer) && !pointInPolygon(island)`
+- **Default map**: 8-point ellipses — outer 900x650, island 720x480, worldSize 1200
+- **Collision**: `resolveMapCollisions()` keeps boat inside outline + outside island. Edge-normal push + wall-normal velocity cancellation with sliding friction
+- **Rendering**: green fill → water polygon → island green → clipped grid (evenodd) → wall strokes → attributes. Bridges render separately after boats (boats pass under)
 
 ## Gotchas
 
-- `TrackBounds` only supports axis-aligned rectangles — will need a different representation for curved canals
-- Background render draws a 200-unit margin outside the outer boundary
+- `src/track.ts` still exists (legacy AABB) but is unused — racing state uses MapData
+- `src/systems/background-render.ts` still exists but is unused — replaced by `map-renderer.ts`
+- Push functions use edge outward normals, not centroid direction — prevents stuck-between-walls oscillation
+- `PUSH_DIST = 6` + wall-normal velocity cancellation prevents stuck-at-wall issues
