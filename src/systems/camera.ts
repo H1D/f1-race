@@ -2,7 +2,8 @@ import type { CameraState, Entity } from "../types";
 
 const CAMERA_LERP = 0.08;
 const LOOK_AHEAD = 80;
-const ZOOM_LERP = 0.15;
+const ZOOM_SPRING_STIFFNESS = 4.0; // how fast zoom snaps toward target
+const ZOOM_SPRING_DAMPING = 3.0; // how quickly oscillation settles
 const BBOX_PADDING = 400;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 2.0;
@@ -27,12 +28,10 @@ export function updateCamera(
   // Compute lerp factor: fast during transition, easing to normal
   const t = Math.min(camera._transitionElapsed / TRANSITION_MS, 1);
   const lerp = TRANSITION_LERP + (CAMERA_LERP - TRANSITION_LERP) * t;
-  const zLerp = TRANSITION_LERP + (ZOOM_LERP - TRANSITION_LERP) * t;
-
   if (camera.followTarget) {
     updateFollowMode(camera, camera.followTarget, lerp);
   } else {
-    updateFixedMode(camera, canvasW, canvasH, lerp, zLerp);
+    updateFixedMode(camera, canvasW, canvasH, lerp, dt);
   }
 }
 
@@ -56,7 +55,7 @@ function updateFixedMode(
   canvasW: number,
   canvasH: number,
   lerp: number,
-  zLerp: number,
+  dt: number,
 ): void {
   const entities = camera.entities;
   if (entities.length === 0) return;
@@ -98,7 +97,12 @@ function updateFixedMode(
   const targetZoom = Math.min(canvasW / screenW, canvasH / screenH);
   const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom));
 
-  camera.zoom += (clampedZoom - camera.zoom) * zLerp;
+  // Damped spring for zoom
+  const displacement = clampedZoom - camera.zoom;
+  const springForce = displacement * ZOOM_SPRING_STIFFNESS;
+  const dampingForce = -camera._zoomVelocity * ZOOM_SPRING_DAMPING;
+  camera._zoomVelocity += (springForce + dampingForce) * dt;
+  camera.zoom += camera._zoomVelocity * dt;
 }
 
 export function applyCameraTransform(

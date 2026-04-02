@@ -9,7 +9,7 @@ export function createParticlePool(capacity: number): Particle[] {
       x: 0, y: 0, vx: 0, vy: 0,
       life: 0, maxLife: 0, size: 0,
       r: 0, g: 0, b: 0,
-      active: false,
+      round: false, active: false,
     });
   }
   return pool;
@@ -53,7 +53,13 @@ export function renderParticles(
     const a = p.life / p.maxLife;
     ctx.globalAlpha = a;
     ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    if (p.round) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
   }
   ctx.globalAlpha = prevAlpha;
 }
@@ -101,6 +107,70 @@ export function emitWake(pool: Particle[], entity: Entity): void {
     p.b = 255;
 
     p.active = true;
+  }
+}
+
+// --- Bow arrow emitter (chevron / arrow shape at nose) ---
+
+const BOW_ARM_ANGLE = 0.45; // angle of each arm relative to forward (~26°)
+
+export function emitBowSpray(pool: Particle[], entity: Entity): void {
+  const vel = entity.velocity;
+  const speed = Math.sqrt(vel.x ** 2 + vel.y ** 2);
+  const phys = entity.boatPhysics;
+  if (!phys || speed < 1.5) return;
+
+  const tf = entity.transform;
+  const halfW = entity.render ? entity.render.width / 2 : 32;
+
+  const fwdX = Math.cos(tf.angle);
+  const fwdY = Math.sin(tf.angle);
+
+  const speedRatio = Math.min(speed / phys.maxSpeed, 1);
+
+  // Place particles along each arm of the arrow, from nose backward
+  const armLength = 40 + speedRatio * 65; // longer arms at higher speed
+  const particlesPerArm = Math.floor(speedRatio * 3) + 2; // 2-5 per arm
+
+  for (const side of [-1, 1]) {
+    // Arm points backward+outward from a tip ahead of the nose
+    const armAngle = tf.angle + Math.PI + side * BOW_ARM_ANGLE;
+    const armDirX = Math.cos(armAngle);
+    const armDirY = Math.sin(armAngle);
+
+    // Tip position: just ahead of nose
+    const tipOffset = 1;
+    const tipX = tf.pos.x + fwdX * (halfW + tipOffset);
+    const tipY = tf.pos.y + fwdY * (halfW + tipOffset);
+
+    for (let i = 0; i < particlesPerArm; i++) {
+      const p = acquireParticle(pool);
+      if (!p) return;
+
+      // Position along the arm from tip back toward nose, with random offset
+      const t = (i / particlesPerArm) * armLength + Math.random() * 5;
+      const perpX = -armDirY;
+      const perpY = armDirX;
+      const jitter = (Math.random() - 0.5) * 6;
+      p.x = tipX + armDirX * t + perpX * jitter;
+      p.y = tipY + armDirY * t + perpY * jitter;
+
+      // Minimal drift
+      p.vx = armDirX * speed * 0.1 + (Math.random() - 0.5) * 3;
+      p.vy = armDirY * speed * 0.1 + (Math.random() - 0.5) * 3;
+
+      p.life = 0.1 + Math.random() * 0.2;
+      p.maxLife = p.life;
+      p.size = 2 + Math.random() * 2.5 + (i / particlesPerArm) * 1.5; // varied bubbly sizes
+
+      // White-blue spray
+      p.r = 220 + Math.floor(Math.random() * 35);
+      p.g = 230 + Math.floor(Math.random() * 25);
+      p.b = 255;
+
+      p.round = true;
+      p.active = true;
+    }
   }
 }
 
