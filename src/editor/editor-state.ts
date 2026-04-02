@@ -193,10 +193,8 @@ export class EditorState implements GameState {
       setToolbarActions([
         { label: "Albert Heijn", id: "place-albert-heijn" },
         { label: "Effendi", id: "place-effendi" },
-        { label: "Doctor Falafel", id: "place-doctor-falafel" },
         { label: "Herring Kiosk", id: "place-herring-kiosk" },
         { label: "Bike Shop", id: "place-bike-shop" },
-        { label: "Cheese Shop", id: "place-cheese-shop" },
       ]);
       setToolbarStatus("Select an item, then click on land to place.");
     } else if (mode === "bridges") {

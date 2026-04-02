@@ -8,3 +8,4 @@ await Bun.build({
 
 cpSync("public/index.html", "dist/index.html");
 cpSync("src/boat/boat.png", "dist/boat.png");
+cpSync("src/assets", "dist/assets", { recursive: true });

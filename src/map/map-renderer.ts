@@ -7,22 +7,26 @@ const BRIDGE_COLOR = "#a08060";
 const GRID_SIZE = 50;
 const GRID_COLOR = "rgba(255,255,255,0.04)";
 
-const ATTR_COLORS: Record<string, string> = {
-  "albert-heijn": "#00a0e4",
-  effendi: "#e06030",
-  "doctor-falafel": "#40a040",
-  "herring-kiosk": "#c08030",
-  "bike-shop": "#e04080",
-  "cheese-shop": "#e0c020",
-};
+// Sprite images for map attributes
+const ATTR_SPRITES: Record<string, HTMLImageElement> = {};
+const ATTR_SPRITE_SIZE = 80; // render size in world units
+
+function loadAttrSprite(type: string, url: string) {
+  const img = new Image();
+  img.src = url;
+  ATTR_SPRITES[type] = img;
+}
+
+loadAttrSprite("albert-heijn", new URL("../assets/ah.png", import.meta.url).href);
+loadAttrSprite("effendi", new URL("../assets/effendy.png", import.meta.url).href);
+loadAttrSprite("herring-kiosk", new URL("../assets/herring.png", import.meta.url).href);
+loadAttrSprite("bike-shop", new URL("../assets/bike.png", import.meta.url).href);
 
 const ATTR_LABELS: Record<string, string> = {
   "albert-heijn": "AH",
   effendi: "EF",
-  "doctor-falafel": "DF",
   "herring-kiosk": "HK",
   "bike-shop": "BS",
-  "cheese-shop": "CS",
 };
 
 const FLAG_POLE_HEIGHT = 24;
@@ -378,20 +382,36 @@ export function renderAttributeMarker(
   y: number,
   type: string,
 ): void {
-  const color = ATTR_COLORS[type] || "#888";
-  const label = ATTR_LABELS[type] || "??";
+  const sprite = ATTR_SPRITES[type];
+  const s = ATTR_SPRITE_SIZE;
 
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  if (sprite && sprite.complete && sprite.naturalWidth > 0) {
+    // Scale to fit within ATTR_SPRITE_SIZE, maintaining aspect ratio
+    const aspect = sprite.naturalWidth / sprite.naturalHeight;
+    let w = s;
+    let h = s;
+    if (aspect > 1) { h = s / aspect; }
+    else { w = s * aspect; }
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 10px monospace";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(label, x, y);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 2); // 90 degrees — face right
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  } else {
+    // Fallback: colored circle with label
+    const label = ATTR_LABELS[type] || "??";
+    ctx.fillStyle = "#888";
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x, y);
+  }
 }
