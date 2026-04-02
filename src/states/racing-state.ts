@@ -79,6 +79,14 @@ import {
   type FloodSystem,
   type BoatPenalty,
 } from "../systems/flooding";
+import {
+  createTourBoats,
+  updateTourBoats,
+  renderTourBoats,
+  collideTourBoats,
+  TOUR_BOAT_RADIUS,
+  type TourBoat,
+} from "../systems/tour-boats";
 
 /** Derive TrackBounds from polygon MapData for powerup spawn point generation. */
 function trackBoundsFromMap(map: MapData): TrackBounds {
@@ -126,6 +134,8 @@ export class RacingState implements GameState {
   private floodPanel: HTMLElement | null = null;
   private penalty1!: BoatPenalty;
   private penalty2!: BoatPenalty;
+  private tourBoats!: TourBoat[];
+  private tourCenterline!: { x: number; y: number }[];
   private particles!: Particle[];
   private toasts: PowerupToast[] = [];
   private sound!: SoundSystem;
@@ -168,6 +178,7 @@ export class RacingState implements GameState {
       this.map.startAngle,
     );
     this.player1.render!.color = "#e04040";
+    this.player1.render!.spriteId = "p1";
 
     // Player 2 (yellow, Arrows) — offset 50 units to the side
     const offsetX = Math.cos(this.map.startAngle + Math.PI / 2) * 50;
@@ -178,6 +189,7 @@ export class RacingState implements GameState {
       this.map.startAngle,
     );
     this.player2.render!.color = "#e0c040";
+    this.player2.render!.spriteId = "p2";
 
     this.camera = {
       x: this.map.startPos.x,
@@ -195,6 +207,10 @@ export class RacingState implements GameState {
     this.flood = createFloodSystem();
     this.penalty1 = createBoatPenalty();
     this.penalty2 = createBoatPenalty();
+
+    const tourData = createTourBoats(this.map, 2);
+    this.tourBoats = tourData.boats;
+    this.tourCenterline = tourData.centerline;
     this.floodPanel = createFloodSettingsPanel(this.flood);
 
     if (this.player1.boatPhysics) {
@@ -433,6 +449,23 @@ export class RacingState implements GameState {
 
     updateParticles(this.particles, dt);
 
+    // Tour boats — move along river + collide with players
+    updateTourBoats(this.tourBoats, this.tourCenterline, dt);
+
+    const p1Pos = this.player1.transform.pos;
+    const p1Col = collideTourBoats(this.tourBoats, p1Pos.x, p1Pos.y, this.player1.velocity.x, this.player1.velocity.y, 20);
+    if (p1Col.hit) {
+      this.player1.velocity.x = p1Col.velX;
+      this.player1.velocity.y = p1Col.velY;
+    }
+
+    const p2Pos = this.player2.transform.pos;
+    const p2Col = collideTourBoats(this.tourBoats, p2Pos.x, p2Pos.y, this.player2.velocity.x, this.player2.velocity.y, 20);
+    if (p2Col.hit) {
+      this.player2.velocity.x = p2Col.velX;
+      this.player2.velocity.y = p2Col.velY;
+    }
+
     // Checkpoint + finish line tracking
     if (this.raceStartGrace <= 0 && !this.winner) {
       this.p1NextCheckpoint = this.updateCheckpoints(
@@ -617,6 +650,9 @@ export class RacingState implements GameState {
     // Particles (world-space)
     renderParticles(ctx, this.particles);
 
+    // Tour boats (before player boats so players render on top)
+    renderTourBoats(ctx, this.tourBoats);
+
     this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
     this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
 
@@ -646,6 +682,7 @@ export class RacingState implements GameState {
     if (this.flood.waterLevel > 0.05) {
       ctx.save();
       applyCameraTransform(ctx, this.camera, w, h);
+      renderTourBoats(ctx, this.tourBoats);
       this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
       this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
       renderBridges(ctx, this.map);

@@ -40,6 +40,7 @@ export interface RenderComponent {
   width: number;
   height: number;
   color: string;
+  spriteId?: string; // "p1" or "p2" for per-player boat sprites
 }
 
 // === Powerup components ===

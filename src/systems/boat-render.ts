@@ -1,10 +1,24 @@
 import type { Entity } from "../types";
 
-const boatImage = new Image();
-boatImage.src = "boat.png";
+const boatImageP1 = new Image();
+boatImageP1.src = "boat-p1.png";
+
+const boatImageP2 = new Image();
+boatImageP2.src = "boat-p2.png";
+
+// Fallback (legacy boat.png)
+const boatImageDefault = new Image();
+boatImageDefault.src = "boat.png";
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+function getBoatImage(entity: Entity): HTMLImageElement {
+  const spriteId = entity.render?.spriteId;
+  if (spriteId === "p1") return boatImageP1;
+  if (spriteId === "p2") return boatImageP2;
+  return boatImageDefault;
 }
 
 export function renderBoat(ctx: CanvasRenderingContext2D, entity: Entity, alpha: number): void {
@@ -24,10 +38,11 @@ export function renderBoat(ctx: CanvasRenderingContext2D, entity: Entity, alpha:
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(angle);
+  ctx.rotate(angle + Math.PI); // sprites face left, physics faces right
 
-  if (boatImage.complete && boatImage.naturalWidth > 0) {
-    ctx.drawImage(boatImage, -r.width / 2, -r.height / 2, r.width, r.height);
+  const img = getBoatImage(entity);
+  if (img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, -r.width / 2, -r.height / 2, r.width, r.height);
   } else {
     // Fallback: procedural boat while image loads
     const hw = r.width / 2;
