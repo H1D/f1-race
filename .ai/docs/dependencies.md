@@ -17,9 +17,9 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[31]{module,depends_on}:
+modules[35]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
-  racing-state,entity + entity-manager + map-data + physics + collision + camera + boat-render + map-renderer + particles + debug + powerup-spawn + powerup-collision + powerup-effects + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry + ui-text + sound-system
+  racing-state,entity + entity-manager + map-data + physics + collision + camera + boat-render + map-renderer + particles + debug + powerup-spawn + powerup-collision + powerup-effects + attribute-pickups + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry + ui-text + sound-system
   sound-system,types (SoundSystem + SoundDefinition) + synth + sound-definitions
   synth,types (SoundEnvelope + OscillatorConfig + NoiseConfig + FilterConfig)
   sound-def-engine,types (SoundDefinition)
@@ -48,7 +48,11 @@ modules[31]{module,depends_on}:
   menu-state,types + racing-state + ui-text
   zone-effects,types (Entity + PowerupDefinition)
   entity-lifetime,types (Entity)
-  registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag + definitions/oil-slick + definitions/canal-lock + definitions/draft-shield
+  attribute-pickups,types (AttributeType + Entity + MapData + PowerupDefinition + Vec2) + entity (createPickupEntity) + map-data (isOnWater)
+  powerup-icons,types (none — canvas API only)
+  registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag + definitions/oil-slick + definitions/canal-lock + definitions/draft-shield + definitions/bicycle-drop + definitions/main-character-syndrome
+  bicycle-drop,types (PowerupDefinition) + entity (createObstacleEntity) + powerup-icons
+  main-character-syndrome,types (PowerupDefinition) + powerup-icons
 ```
 
 ## Assets

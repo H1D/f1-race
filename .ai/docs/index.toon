@@ -2,7 +2,7 @@ project: boat-race
 type: typescript/canvas
 framework: none (vanilla Canvas 2D)
 runtime: bun
-updated: 2026-04-02 (sound subsystem: procedural Web Audio synthesis)
+updated: 2026-04-02 (attribute pickups + inventory system + canal/flood routing)
 
 features[12]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend

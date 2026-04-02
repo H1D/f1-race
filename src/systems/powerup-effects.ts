@@ -1,5 +1,58 @@
 import type { Entity, MapData, PickupEvent, PowerupDefinition } from "../types";
 
+/**
+ * Apply a powerup directly from a player's inventory (no pickup entity involved).
+ * Returns any entities spawned by the effect's onSpawn hook.
+ */
+export function activateInventoryEffect(
+  boat: Entity,
+  powerupId: string,
+  definitions: Map<string, PowerupDefinition>,
+  map: MapData,
+): Entity[] {
+  const def = definitions.get(powerupId);
+  if (!def) return [];
+
+  if (!boat.activeEffects) boat.activeEffects = { effects: [] };
+
+  // canApply gate
+  if (def.effect.canApply && !def.effect.canApply(boat)) return [];
+
+  const existing = boat.activeEffects.effects.find((e) => e.powerupId === def.id);
+  if (existing) {
+    switch (def.effect.stacking) {
+      case "refresh":
+        existing.remainingTime = def.effect.duration;
+        return def.effect.onSpawn ? def.effect.onSpawn(boat, map) : [];
+      case "ignore":
+        return [];
+      case "replace":
+        def.effect.onExpire(boat, existing.state);
+        boat.activeEffects.effects = boat.activeEffects.effects.filter((e) => e !== existing);
+        break;
+      case "stack":
+        if (
+          boat.activeEffects.effects.filter((e) => e.powerupId === def.id).length >=
+          def.effect.maxStacks
+        ) {
+          return [];
+        }
+        break;
+    }
+  }
+
+  const state: Record<string, number> = {};
+  def.effect.onApply(boat, boat, state);
+  boat.activeEffects.effects.push({
+    powerupId: def.id,
+    remainingTime: def.effect.duration,
+    sourceEntityId: boat.id,
+    state,
+  });
+
+  return def.effect.onSpawn ? def.effect.onSpawn(boat, map) : [];
+}
+
 export function applyPickupEvents(
   events: PickupEvent[],
   entities: Entity[],

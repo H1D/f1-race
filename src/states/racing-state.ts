@@ -36,12 +36,18 @@ import {
 import { detectPowerupPickups } from "../systems/powerup-collision";
 import {
   applyPickupEvents,
+  activateInventoryEffect,
   tickActiveEffects,
   processExpirations,
 } from "../systems/powerup-effects";
+import {
+  createAttributePickupSystem,
+  updateAttributePickups,
+  type AttributePickupSystem,
+} from "../systems/attribute-pickups";
 import { tickLifetimes } from "../systems/entity-lifetime";
 import { processZoneEffects } from "../systems/zone-effects";
-import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals, renderEffectsHUD, renderPickupToasts } from "../systems/powerup-render";
+import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals, renderEffectsHUD, renderPickupToasts, renderInventoryHUD } from "../systems/powerup-render";
 import { loadPowerupDefinitions } from "../powerups/registry";
 import { createPowerupDebugSection } from "../powerup-debug";
 import { createGameLog, renderGameLog, type GameLog } from "../game-log";
@@ -129,6 +135,8 @@ export class RacingState implements GameState {
   private particles!: Particle[];
   private toasts: PowerupToast[] = [];
   private sound!: SoundSystem;
+  private attrPickupSystem!: AttributePickupSystem;
+  private _syndromeActive = false;
   private _audioInitHandler: (() => void) | null = null;
   private wallResult: CollisionResult = {
     collided: false, contactX: 0, contactY: 0,
@@ -208,8 +216,10 @@ export class RacingState implements GameState {
     // Powerup setup — both boats can pick up
     this.player1.collider = { radius: 16, layer: LAYER_BOAT };
     this.player1.activeEffects = { effects: [] };
+    this.player1.inventory = { slots: [null, null], maxSlots: 2 };
     this.player2.collider = { radius: 16, layer: LAYER_BOAT };
     this.player2.activeEffects = { effects: [] };
+    this.player2.inventory = { slots: [null, null], maxSlots: 2 };
 
     this.entityManager = createEntityManager();
     this.entityManager.add(this.player1);
@@ -218,6 +228,7 @@ export class RacingState implements GameState {
     this.spawnState = createSpawnManagerState(this.map);
     this.floodState = { active: false, level: 0, timeRemaining: 0 };
     this.powerupDefs = loadPowerupDefinitions();
+    this.attrPickupSystem = createAttributePickupSystem(this.map);
     this.gameLog = createGameLog();
 
     this.powerupDebugPanel = createPowerupDebugSection({
@@ -473,7 +484,17 @@ export class RacingState implements GameState {
       }
     }
 
-    // Powerup spawning
+    // Attribute pickup spawning (fixed positions near map attributes)
+    const newAttrPickups = updateAttributePickups(
+      this.attrPickupSystem,
+      this.entityManager.entities,
+      this.map,
+      this.powerupDefs,
+      dt,
+    );
+    this.entityManager.addMany(newAttrPickups);
+
+    // Water-spawned powerup spawning
     const trackBounds = trackBoundsFromMap(this.map);
     const newPickups = updatePowerupSpawning(
       this.entityManager.entities,
@@ -494,9 +515,72 @@ export class RacingState implements GameState {
     // Pickup collision detection (both boats can pick up)
     const boats = this.entityManager.getByTag("player");
     const pickups = this.entityManager.getWithComponent("powerupPickup");
-    const pickupEvents = detectPowerupPickups(boats, pickups);
+    const allPickupEvents = detectPowerupPickups(boats, pickups);
 
-    for (const event of pickupEvents) {
+    // Split: attribute-spawned pickups → inventory (use with key), water-spawned → apply immediately
+    const attrPickupEvents = allPickupEvents.filter((ev) => {
+      const e = this.entityManager.entities.find((x) => x.id === ev.pickupEntityId);
+      return e?.tags.has("attr-pickup");
+    });
+    const regularPickupEvents = allPickupEvents.filter((ev) => !attrPickupEvents.includes(ev));
+
+    // Attr pickups: add to boat inventory (if space), mark orb for removal
+    for (const event of attrPickupEvents) {
+      const boat = event.boatEntityId === this.player1.id ? this.player1 : this.player2;
+      const orb = this.entityManager.entities.find((e) => e.id === event.pickupEntityId);
+      if (!orb || !boat.inventory) continue;
+      const emptyIdx = boat.inventory.slots.findIndex((s) => s === null);
+      if (emptyIdx < 0) continue; // inventory full
+      boat.inventory.slots[emptyIdx] = event.powerupId;
+      orb.markedForRemoval = { reason: "picked-up" };
+      const def = this.powerupDefs.get(event.powerupId);
+      if (def) {
+        this.gameLog.log(`📦 Stored ${def.name}`, "pickup");
+        this.toasts.push({
+          name: def.name,
+          icon: def.visual?.hudIcon ?? def.spawn.icon,
+          color: def.spawn.color,
+          elapsed: 0,
+          duration: 2.0,
+          boat,
+        });
+      }
+      playSound(this.sound, "pickup");
+    }
+
+    // Inventory use: Q (P1) / ShiftRight (P2)
+    for (const [boat, inp] of [
+      [this.player1, input.player1],
+      [this.player2, input.player2],
+    ] as const) {
+      if (!inp.useItem || !boat.inventory) continue;
+      const idx = boat.inventory.slots.findIndex((s) => s !== null);
+      if (idx < 0) continue;
+      const powerupId = boat.inventory.slots[idx]!;
+      boat.inventory.slots[idx] = null;
+      // Shift remaining items toward front
+      boat.inventory.slots = [
+        ...boat.inventory.slots.filter((s) => s !== null),
+        ...Array(boat.inventory.maxSlots).fill(null),
+      ].slice(0, boat.inventory.maxSlots) as Array<string | null>;
+      const spawned = activateInventoryEffect(boat, powerupId, this.powerupDefs, this.map);
+      this.entityManager.addMany(spawned);
+      const def = this.powerupDefs.get(powerupId);
+      if (def) {
+        this.gameLog.log(`⚡ Used ${def.name}`, "pickup");
+        this.toasts.push({
+          name: def.name,
+          icon: def.visual?.hudIcon ?? def.spawn.icon,
+          color: def.spawn.color,
+          elapsed: 0,
+          duration: 2.0,
+          boat,
+        });
+        playSound(this.sound, "pickup");
+      }
+    }
+
+    for (const event of regularPickupEvents) {
       const def = this.powerupDefs.get(event.powerupId);
       if (def) {
         this.gameLog.log(UI.log.pickedUp(def.visual?.hudIcon ?? "?", def.name), "pickup");
@@ -517,9 +601,9 @@ export class RacingState implements GameState {
     for (const toast of this.toasts) toast.elapsed += dt;
     this.toasts = this.toasts.filter((t) => t.elapsed < t.duration);
 
-    // Apply pickup effects
+    // Apply regular pickup effects
     const spawnedEntities = applyPickupEvents(
-      pickupEvents, this.entityManager.entities, this.powerupDefs, this.map,
+      regularPickupEvents, this.entityManager.entities, this.powerupDefs, this.map,
     );
     this.entityManager.addMany(spawnedEntities);
 
@@ -530,6 +614,35 @@ export class RacingState implements GameState {
 
     tickActiveEffects(this.entityManager.entities, this.powerupDefs, dt);
     processExpirations(this.entityManager.entities, this.powerupDefs);
+
+    // Main Character Syndrome: lock camera onto the affected boat + zoom in
+    {
+      const p1Syndrome = this.player1.activeEffects?.effects.find(
+        (e) => e.powerupId === "main-character-syndrome",
+      );
+      const p2Syndrome = this.player2.activeEffects?.effects.find(
+        (e) => e.powerupId === "main-character-syndrome",
+      );
+      const wasSyndrome = this._syndromeActive;
+      this._syndromeActive = !!(p1Syndrome ?? p2Syndrome);
+      if (p1Syndrome) {
+        this.camera.followTarget = this.player1;
+      } else if (p2Syndrome) {
+        this.camera.followTarget = this.player2;
+      } else if (wasSyndrome) {
+        this.camera.followTarget = null; // spring eases back to fixed-mode zoom
+      }
+
+      // Smoothly zoom in during syndrome, let the fixed-mode spring ease back out
+      if (this._syndromeActive) {
+        const SYNDROME_ZOOM = 2.8;
+        const ZOOM_IN_SPEED = 1.5; // zoom units per second
+        if (this.camera.zoom < SYNDROME_ZOOM) {
+          this.camera.zoom = Math.min(SYNDROME_ZOOM, this.camera.zoom + ZOOM_IN_SPEED * dt);
+          this.camera._zoomVelocity = 0;
+        }
+      }
+    }
 
     // Log expired effects
     const effectsAfter = new Set(
@@ -658,6 +771,7 @@ export class RacingState implements GameState {
     this.renderHUD(ctx, w);
     this.renderFloodHUD(ctx, w, h);
     renderEffectsHUD(ctx, this.player1, this.powerupDefs, w);
+    renderInventoryHUD(ctx, this.player1, this.player2, this.powerupDefs, w, h);
 
     // Race timer (bottom center)
     const displayTime = this.winner ? this.winnerTime : this.raceTimer;

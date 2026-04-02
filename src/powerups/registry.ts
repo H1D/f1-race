@@ -4,6 +4,8 @@ import { anchorDrag } from "./definitions/anchor-drag";
 import { oilSlick, oilSlickZone } from "./definitions/oil-slick";
 import { canalLock } from "./definitions/canal-lock";
 import { draftShield } from "./definitions/draft-shield";
+import { bicycleDrop } from "./definitions/bicycle-drop";
+import { mainCharacterSyndrome } from "./definitions/main-character-syndrome";
 
 const POWERUP_REGISTRY: Map<string, PowerupDefinition> = new Map();
 
@@ -17,6 +19,10 @@ register(anchorDrag);
 register(oilSlick);
 register(canalLock);
 register(draftShield);
+
+// Attribute-only pickups (rarity 0 — never water-spawned, only from map attributes)
+register(bicycleDrop);
+register(mainCharacterSyndrome);
 
 // Zone effect definitions (not spawnable pickups — applied by zone entities)
 register(oilSlickZone);

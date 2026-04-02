@@ -225,6 +225,60 @@ export function drawCanalLockIcon(ctx: CanvasRenderingContext2D, size: number): 
   ctx.restore();
 }
 
+/**
+ * Stompot (Dutch stamppot) icon — a bowl of mashed potatoes with steam.
+ * Used for the Main Character Syndrome powerup (Effendi attribute).
+ */
+export function drawStompotIcon(ctx: CanvasRenderingContext2D, size: number): void {
+  const s = size / 2;
+
+  ctx.save();
+
+  // Bowl body (open trapezoid)
+  const rimY   = -s * 0.08;
+  const baseY  =  s * 0.62;
+  const rimW   =  s * 0.76;
+  const baseW  =  s * 0.52;
+
+  ctx.beginPath();
+  ctx.moveTo(-rimW, rimY);
+  ctx.lineTo( rimW, rimY);
+  ctx.lineTo( baseW, baseY);
+  ctx.lineTo(-baseW, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Rim ellipse
+  ctx.beginPath();
+  ctx.ellipse(0, rimY, rimW, s * 0.13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Mash surface — three bumps inside the rim
+  const mashY = rimY + s * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(-rimW * 0.65, mashY);
+  for (let i = 0; i < 3; i++) {
+    const bx = -rimW * 0.65 + (rimW * 1.3 / 3) * (i + 0.5);
+    ctx.quadraticCurveTo(bx, mashY - s * 0.16, bx + rimW * 0.65 / 3, mashY);
+  }
+  ctx.lineWidth = Math.max(0.8, size * 0.04);
+  ctx.stroke();
+
+  // Two steam wisps above
+  for (const sx of [-s * 0.22, s * 0.22]) {
+    ctx.beginPath();
+    ctx.moveTo(sx, rimY - s * 0.08);
+    ctx.quadraticCurveTo(sx + s * 0.10, rimY - s * 0.26, sx, rimY - s * 0.42);
+    ctx.globalAlpha = 0.7;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
 export function drawOilSpillIcon(ctx: CanvasRenderingContext2D, size: number): void {
   const h = size / 2;
   const r = h * 0.38;

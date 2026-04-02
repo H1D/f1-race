@@ -7,8 +7,8 @@ status: active
 depends_on[3]: boat-physics,racing,track
 entry_point: src/powerups/registry.ts
 
-files[15]{path,purpose}:
-  src/types.ts,"powerup component interfaces — PowerupPickupComponent, ActiveEffect, ActiveEffectsComponent, LifetimeComponent, ZoneComponent, ColliderComponent, MarkedForRemovalComponent, PowerupDefinition (incl. canApply hook + onSpawn(boat,map) signature), PickupEvent, SpawnManagerState, FloodState, PowerupToast, Bridge, MapData"
+files[19]{path,purpose}:
+  src/types.ts,"powerup component interfaces — PowerupPickupComponent, ActiveEffect, ActiveEffectsComponent, InventoryComponent, LifetimeComponent, ZoneComponent, ColliderComponent, MarkedForRemovalComponent, PowerupDefinition (incl. canApply hook + onSpawn(boat,map) signature), PickupEvent, SpawnManagerState, FloodState, PowerupToast, Bridge, MapData"
   src/entity.ts,"entity factories — createPickupEntity, createObstacleEntity, createZoneEntity, createBridgeBarrierEntity"
   src/entity-manager.ts,entity list with tag/component queries + marked-for-removal cleanup
   src/powerups/registry.ts,PowerupDefinition map — register + load all definitions
@@ -17,10 +17,14 @@ files[15]{path,purpose}:
   src/powerups/definitions/oil-slick.ts,"oilSlick — spawns 50-radius slow zone at boat position (instant); oilSlickZone — zone effect applied while inside slick"
   src/powerups/definitions/canal-lock.ts,canalLock — instant effect that spawns a bridge barrier at nearest bridge for 5s
   src/powerups/definitions/draft-shield.ts,draftShield — 15s shield that absorbs the next anchor-drag hit
+  src/powerups/definitions/bicycle-drop.ts,"bicycleDrop — drops perpendicular bicycle obstacle behind boat; rarity=0 (attr-only via bike-shop)"
+  src/powerups/definitions/main-character-syndrome.ts,"mainCharacterSyndrome — camera follows + tints boat pink 3s; rarity=0 (attr-only via effendi)"
   src/systems/powerup-spawn.ts,timer-based weighted spawn on canal spawn points + flood filtering
   src/systems/powerup-collision.ts,circle-circle detection between boats and pickups → PickupEvent[]
-  src/systems/powerup-effects.ts,"apply (canApply gate + stacking rules) + tick (countdown + onTick) + expire (onExpire + cleanup); accepts map: MapData parameter passed to onSpawn"
-  src/systems/powerup-render.ts,"render pickups (bob animation), zones (translucent circles), obstacles, effect visuals (pulsing glow halo + tint ring), effects HUD, pickup name toasts (fade + drift)"
+  src/systems/powerup-effects.ts,"apply (canApply gate + stacking rules) + activateInventoryEffect + tick (countdown + onTick) + expire (onExpire + cleanup); accepts map: MapData parameter passed to onSpawn"
+  src/systems/attribute-pickups.ts,"fixed-position orbs near map attributes (herring-kiosk/albert-heijn→herring-boost, bike-shop→bicycle-drop, effendi→main-character-syndrome); 10s respawn cooldown"
+  src/systems/powerup-render.ts,"render pickups (bob animation), zones (translucent circles), obstacles, effect visuals (pulsing glow halo + tint ring), effects HUD, inventory HUD (Q-key slots), pickup name toasts (fade + drift)"
+  src/systems/powerup-icons.ts,canvas 2D icon drawing functions for each powerup (centered at 0/0 fitting ±size/2)
   src/systems/entity-lifetime.ts,generic countdown → mark for removal
   src/systems/entity-cleanup.ts,remove entities with markedForRemoval
 ```
@@ -36,6 +40,9 @@ files[15]{path,purpose}:
 - **Flood-ready**: `FloodState` and `SpawnPoint.zoneType` enable flood-only powerups when implemented. Category "flood" definitions only spawn during active floods
 - **canApply hook**: optional `(target: Entity) => boolean` on `PowerupDefinition.effect`. Return false to block the effect AND consume any shield. Runs before stacking checks. Currently used by anchor-drag to check for draft-shield
 - **Orchestrator pattern**: `RacingState.update()` runs the full pipeline — spawn → detect → canApply gate → apply → tick → expire → zones → lifetimes → cleanup
+- **Attribute pickups**: fixed orbs near map attributes (herring kiosk, bike shop, effendi). Tagged `attr-pickup`. Respawn after 10s cooldown once consumed
+- **Inventory system**: boats have `InventoryComponent` (2 slots). Category routing: `canal` powerups apply instantly on touch; `flood` powerups enter inventory and activate on Q (P1) or ShiftRight (P2)
+- **Powerup icons**: `drawIcon?: (ctx, size) => void` hook on `PowerupDefinition.visual` — canvas 2D drawing function for each powerup, used in inventory HUD and orb rendering
 
 ## Gotchas
 
@@ -66,4 +73,6 @@ Powerup spawn orb color encodes alignment at a glance:
 | oil-slick | Diesel Spill | canal | spawns 50-radius slow zone (8s) at boat position | instant | 🟡 `#88ee22` weapon |
 | canal-lock | Canal Lock | canal | lowers bridge barrier at nearest bridge for 5s | instant | 🟡 `#88ee22` weapon |
 | draft-shield | Draft Shield | canal | absorbs next anchor-drag hit | 15s | 🔵 `#44bbff` defensive |
+| bicycle-drop | Bicycle Drop | canal | drops perpendicular bicycle obstacle behind boat (8s lifetime) | instant | 🟠 `#ff7733` weapon — attr-only |
+| main-character-syndrome | Main Character Syndrome | canal | camera follows + pink tint for 3s | 3s | 🩷 `#ff44bb` — attr-only |
 | oil-slick-zone | (zone effect) | — | 0.35× speed + 0.4× thrust while inside oil slick | 0.3s TTL (refreshed) | — internal, rarity 0 |

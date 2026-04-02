@@ -104,6 +104,13 @@ export interface Entity {
   zone?: ZoneComponent;
   collider?: ColliderComponent;
   markedForRemoval?: MarkedForRemovalComponent;
+  inventory?: InventoryComponent;
+}
+
+// === Inventory (pickable powerup slots) ===
+export interface InventoryComponent {
+  slots: Array<string | null>; // powerupId or null per slot
+  maxSlots: number;            // 2
 }
 
 // === Input snapshot ===
@@ -113,6 +120,7 @@ export interface InputState {
   throttle: boolean;
   reverse: boolean;
   steeringAccum: number; // -1..1 smoothed
+  useItem: boolean;      // one-shot: true only on the frame the button is pressed
 }
 
 // === Dual-player input ===

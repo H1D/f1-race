@@ -24,7 +24,9 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | entity | `src/entity.ts` | Entity factories (boat/pickup/obstacle/zone) + ID counter |
 | entity-manager | `src/entity-manager.ts` | Entity list with tag/component queries + cleanup |
 | physics | `src/systems/physics.ts` | World-space decompose/recompose + anisotropic drag + motor ramp |
-| collision | `src/systems/collision.ts` | Polygon boundary + wall response + boat-to-boat collision with impulse; optional `CollisionResult` out-param |
+| collision | `src/systems/collision.ts` | Polygon boundary + wall response + boat-to-boat + boat-obstacle collision; optional `CollisionResult` out-param |
+| attribute-pickups | `src/systems/attribute-pickups.ts` | Fixed-position orbs near map attributes — `ATTRIBUTE_POWERUP_MAP` binds attr types to powerup IDs; 10s respawn cooldown |
+| powerup-icons | `src/systems/powerup-icons.ts` | Canvas 2D icon drawing functions per powerup (centered at 0/0 fitting ±size/2) |
 | sound-system | `src/sound/sound.ts` | SoundSystem factory + `playSound`/`startContinuous`/`updateContinuous`/`stopContinuous` API |
 | synth | `src/sound/synth.ts` | Web Audio primitives — white/pink/brown noise buffers + ADSR envelopes + osc/filter/noise builders |
 | camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
@@ -73,11 +75,16 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Orchestrator logging**: Systems stay pure, RacingState observes outputs and logs events
 - **Procedural audio**: No audio files — all sounds synthesized at runtime via Web Audio API. `SoundDefinition` objects describe oscillator/noise/filter recipes analogous to `PowerupDefinition`
 - **Lazy AudioContext**: Created inside a `keydown` handler (not at startup) to satisfy Chrome autoplay policy — all sound calls are no-ops before `initAudio()`
+- **Canal vs flood routing**: `category === "canal"` powerups apply immediately on touch; `category === "flood"` powerups enter boat inventory (2-slot `InventoryComponent`) and activate on Q (P1) / ShiftRight (P2)
+- **Attribute pickups**: `ATTRIBUTE_POWERUP_MAP` in `attribute-pickups.ts` maps attr types → powerup IDs; `rarity=0` definitions are exclusively attribute-spawned, never water-spawned
 
 ## Key Rules
 
 - No npm runtime dependencies — pure vanilla TS + Canvas 2D + Web Audio API (browser built-in)
 - Sound definitions live in `src/sound/definitions/` — export data only, no side effects
+- `rarity=0` powerups are attr-only — they never appear in the water-spawn pool; add to `ATTRIBUTE_POWERUP_MAP` to give them a fixed spawn location
+- Canal powerups apply immediately on pickup; flood powerups go to inventory (Q / ShiftRight to use)
+- `InventoryComponent` — `{ slots: [null, null], maxSlots: 2 }` — initialized per boat in `RacingState.enter()`
 - `SoundSystem` must be initialized via `initAudio()` before any sound plays; safe to call `playSound`/`startContinuous` before init (no-ops)
 - Web Audio: always call `start()` before `stop()` on `AudioScheduledSourceNode` — violating this throws `InvalidStateError`
 - Entities are plain objects with optional `?` components — never add methods to entities
@@ -111,7 +118,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Boat Physics | active | `src/systems/physics.ts`, `src/systems/collision.ts`, `src/entity.ts`, `src/debug.ts` |
 | Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` — 5-lap race with checkpoints, finish line, timer, win screen |
 | Camera | active | `src/systems/camera.ts` |
-| Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts` — 5 playable powerups (herring-boost=buff, anchor-drag=Bicycle Drag/hazard, oil-slick=weapon, canal-lock=weapon, draft-shield=defensive) |
+| Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts`, `src/systems/attribute-pickups.ts` — 7 powerups: herring-boost, anchor-drag, oil-slick, canal-lock, draft-shield, bicycle-drop, main-character-syndrome. Canal=instant; flood=inventory |
 | Map Editor | active | `src/editor/editor-state.ts`, `src/editor/toolbar.ts` |
 | Track | active | `src/map/map-data.ts`, `src/map/map-renderer.ts`, `src/map/geometry.ts` |
 | Input | active | `src/input.ts` |

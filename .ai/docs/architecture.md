@@ -3,7 +3,7 @@
 ## Component Map
 
 ```toon
-components[32]{name,type,path,responsibility}:
+components[34]{name,type,path,responsibility}:
   main,bootstrap,src/main.ts,canvas setup + wires dual-player input/state/loop
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
@@ -15,7 +15,9 @@ components[32]{name,type,path,responsibility}:
   editor-state,state,src/editor/editor-state.ts,map editor — draw/edit river outline + place attributes + bridges
   editor-toolbar,ui,src/editor/toolbar.ts,HTML toolbar with mode tabs and action buttons
   physics,system,src/systems/physics.ts,world-space velocity decompose/recompose + anisotropic drag + motor ramp
-  collision,system,src/systems/collision.ts,polygon boundary + wall response + boat-to-boat collision with impulse + optional CollisionResult out-param for sound triggers
+  collision,system,src/systems/collision.ts,polygon boundary + wall response + boat-to-boat + boat-obstacle collision with impulse + optional CollisionResult out-param for sound triggers
+  attribute-pickups,system,src/systems/attribute-pickups.ts,fixed-position powerup orbs near map attributes — ATTRIBUTE_POWERUP_MAP + 10s respawn cooldown
+  powerup-icons,util,src/systems/powerup-icons.ts,canvas 2D icon drawing functions per powerup — centered at 0/0 fitting ±size/2
   sound-system,system,src/sound/sound.ts,SoundSystem factory + play/start/update/stop/cleanup API — lazy AudioContext init on first keypress
   synth,util,src/sound/synth.ts,Web Audio primitives — white/pink/brown noise buffers + ADSR envelope scheduling + osc/filter/noise builders
   flooding,system,src/systems/flooding.ts,"periodic flood cycle (20s/5s), penalty system, settings panel, flood overlay"
@@ -67,6 +69,8 @@ components[32]{name,type,path,responsibility}:
 - **Orchestrator-level event logging**: Systems stay pure, `RacingState` observes outputs and logs events (set-diff for expirations)
 - **Procedural audio**: No audio files — all sounds synthesized at runtime via Web Audio API. `SoundDefinition` data objects describe oscillator/noise/filter recipes; `RacingState` calls `playSound`/`updateContinuous` based on game events
 - **Lazy AudioContext**: Web Audio `AudioContext` created inside a `keydown` handler (not at startup) to satisfy Chrome autoplay policy; all sound calls are no-ops before init
+- **Canal vs flood routing**: `category === "canal"` powerups apply immediately on touch; `category === "flood"` powerups enter boat inventory (2-slot `InventoryComponent`) and activate on Q / ShiftRight
+- **Attribute pickups**: `ATTRIBUTE_POWERUP_MAP` in `attribute-pickups.ts` binds map attribute types to powerup IDs; orbs with `rarity=0` are exclusively attribute-spawned, never water-spawned
 
 ## Boundaries
 

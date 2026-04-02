@@ -4,7 +4,7 @@ const STEER_ACCEL = 6.0; // how fast steering builds toward ±1
 const STEER_DECAY = 8.0; // how fast it returns to center
 
 function createInputState(): InputState {
-  return { left: false, right: false, throttle: false, reverse: false, steeringAccum: 0 };
+  return { left: false, right: false, throttle: false, reverse: false, steeringAccum: 0, useItem: false };
 }
 
 function updateSteering(state: InputState, dt: number): void {
@@ -32,8 +32,14 @@ export function createInputSystem(): {
 } {
   const keys = new Set<string>();
 
+  // One-shot use-item flags — set on keydown, consumed on next update()
+  let useItem1 = false;
+  let useItem2 = false;
+
   const onDown = (e: KeyboardEvent) => {
     keys.add(e.code);
+    if (e.code === "KeyQ") useItem1 = true;
+    if (e.code === "ShiftRight") useItem2 = true;
   };
   const onUp = (e: KeyboardEvent) => {
     keys.delete(e.code);
@@ -49,18 +55,22 @@ export function createInputSystem(): {
     player2,
 
     update(dt: number) {
-      // Player 1: WASD
+      // Player 1: WASD + Q (use item)
       player1.left = keys.has("KeyA");
       player1.right = keys.has("KeyD");
       player1.throttle = keys.has("KeyW");
       player1.reverse = keys.has("KeyS");
+      player1.useItem = useItem1;
+      useItem1 = false;
       updateSteering(player1, dt);
 
-      // Player 2: Arrow keys
+      // Player 2: Arrow keys + ShiftRight (use item)
       player2.left = keys.has("ArrowLeft");
       player2.right = keys.has("ArrowRight");
       player2.throttle = keys.has("ArrowUp");
       player2.reverse = keys.has("ArrowDown");
+      player2.useItem = useItem2;
+      useItem2 = false;
       updateSteering(player2, dt);
     },
 

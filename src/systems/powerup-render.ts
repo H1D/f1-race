@@ -1,4 +1,4 @@
-import type { Entity, PowerupDefinition, PowerupToast } from "../types";
+import type { Entity, InventoryComponent, PowerupDefinition, PowerupToast } from "../types";
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -307,6 +307,99 @@ export function renderPickupToasts(
 
     ctx.restore();
   }
+}
+
+/**
+ * Draw per-player inventory HUD: two pickup slots at bottom corners.
+ * P1 bottom-left ("Q: use"), P2 bottom-right ("⇧: use").
+ */
+export function renderInventoryHUD(
+  ctx: CanvasRenderingContext2D,
+  player1: Entity,
+  player2: Entity,
+  definitions: Map<string, PowerupDefinition>,
+  screenW: number,
+  screenH: number,
+): void {
+  const slotSize = 32;
+  const gap = 5;
+  const bottomPad = 60; // above the race timer
+
+  // P1: bottom-left
+  if (player1.inventory) {
+    renderSlots(ctx, player1.inventory, definitions, 12, screenH - bottomPad - slotSize, slotSize, gap, "#e04040", "Q: use", false);
+  }
+  // P2: bottom-right
+  if (player2.inventory) {
+    const totalW = 2 * slotSize + gap;
+    renderSlots(ctx, player2.inventory, definitions, screenW - 12 - totalW, screenH - bottomPad - slotSize, slotSize, gap, "#e0c040", "⇧: use", true);
+  }
+}
+
+function renderSlots(
+  ctx: CanvasRenderingContext2D,
+  inventory: InventoryComponent,
+  definitions: Map<string, PowerupDefinition>,
+  x: number,
+  y: number,
+  slotSize: number,
+  gap: number,
+  accentColor: string,
+  keyLabel: string,
+  rightAlign: boolean,
+): void {
+  ctx.save();
+
+  for (let i = 0; i < inventory.maxSlots; i++) {
+    const sx = x + i * (slotSize + gap);
+    const powerupId = inventory.slots[i] ?? null;
+    const def = powerupId ? definitions.get(powerupId) : null;
+
+    // Slot background
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = def ? def.spawn.color : "#1a1a2a";
+    roundRect(ctx, sx, y, slotSize, slotSize, 5);
+    ctx.fill();
+
+    // Border
+    ctx.globalAlpha = def ? 0.7 : 0.3;
+    ctx.strokeStyle = def ? "#ffffff" : "#555577";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, sx, y, slotSize, slotSize, 5);
+    ctx.stroke();
+
+    // Icon
+    if (def?.visual?.drawIcon) {
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = 0.8;
+      ctx.save();
+      ctx.translate(sx + slotSize / 2, y + slotSize / 2);
+      def.visual.drawIcon(ctx, slotSize * 0.72);
+      ctx.restore();
+    } else if (!def) {
+      // Empty slot number
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = "#aaaacc";
+      ctx.font = "11px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(i + 1), sx + slotSize / 2, y + slotSize / 2);
+    }
+  }
+
+  // Key label below slots
+  ctx.globalAlpha = 0.65;
+  ctx.fillStyle = accentColor;
+  ctx.font = "11px monospace";
+  ctx.textAlign = rightAlign ? "right" : "left";
+  ctx.textBaseline = "top";
+  const labelX = rightAlign ? x + 2 * slotSize + gap : x;
+  ctx.fillText(keyLabel, labelX, y + slotSize + 4);
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 /**
