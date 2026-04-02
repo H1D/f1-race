@@ -51,7 +51,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
-2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
+2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then checkpoint/finish/lap tracking, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn (via `trackBoundsFromMap()`) → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
 5. Collision: radius-aware wall check (boat edge, not center) for outer polygon + island. Angle-dependent response: glancing hits deflect, head-on hits push back. Boat-to-boat: circle collision with impulse

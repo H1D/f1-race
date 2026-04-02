@@ -46,7 +46,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
-2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
+2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then checkpoint/finish/lap tracking, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn (via `trackBoundsFromMap()`) → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
 5. Collision: radius-aware wall check (boat edge, not center) for outer polygon + island. Angle-dependent response: glancing hits deflect, head-on hits push back. Boat-to-boat: circle collision with impulse
@@ -98,7 +98,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Feature | Status | Key Files |
 |---------|--------|-----------|
 | Boat Physics | active | `src/systems/physics.ts`, `src/systems/collision.ts`, `src/entity.ts`, `src/debug.ts` |
-| Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` |
+| Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` — 5-lap race with checkpoints, finish line, timer, win screen |
 | Camera | active | `src/systems/camera.ts` |
 | Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts` |
 | Map Editor | active | `src/editor/editor-state.ts`, `src/editor/toolbar.ts` |

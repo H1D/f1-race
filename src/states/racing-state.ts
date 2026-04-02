@@ -112,6 +112,8 @@ export class RacingState implements GameState {
   private p2NextCheckpoint = 0;
   private p1Laps = 0;
   private p2Laps = 0;
+  private raceTimer = 0;
+  private winnerTime = 0;
   private collisionResult: CollisionResult = {
     collided: false,
     contactX: 0,
@@ -246,6 +248,11 @@ export class RacingState implements GameState {
     this.gameLog.elapsedTime += dt;
     this.raceStartGrace -= dt;
 
+    // Race timer (starts after grace period)
+    if (this.raceStartGrace <= 0 && !this.winner) {
+      this.raceTimer += dt;
+    }
+
     // If someone won, freeze the game — space restarts
     if (this.winner) {
       this.winTime += dt;
@@ -327,6 +334,7 @@ export class RacingState implements GameState {
         this.p1NextCheckpoint = 0;
         if (this.p1Laps >= this.totalLaps) {
           this.winner = "Player 1";
+          this.winnerTime = this.raceTimer;
           this.winTime = 0;
           this.gameLog.log("Player 1 wins!", "system");
         } else {
@@ -338,6 +346,7 @@ export class RacingState implements GameState {
         this.p2NextCheckpoint = 0;
         if (this.p2Laps >= this.totalLaps) {
           this.winner = "Player 2";
+          this.winnerTime = this.raceTimer;
           this.winTime = 0;
           this.gameLog.log("Player 2 wins!", "system");
         } else {
@@ -483,6 +492,17 @@ export class RacingState implements GameState {
     this.renderFloodHUD(ctx, w, h);
     renderEffectsHUD(ctx, this.player1, this.powerupDefs, w);
 
+    // Race timer (bottom center)
+    const displayTime = this.winner ? this.winnerTime : this.raceTimer;
+    const mins = Math.floor(displayTime / 60);
+    const secs = Math.floor(displayTime % 60);
+    const ms = Math.floor((displayTime % 1) * 100);
+    const timeStr = `${mins}:${String(secs).padStart(2, "0")}.${String(ms).padStart(2, "0")}`;
+    ctx.font = "bold 24px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText(timeStr, w / 2, h - 20);
+
     // Event log
     renderGameLog(ctx, this.gameLog, w, h);
 
@@ -504,15 +524,24 @@ export class RacingState implements GameState {
       ctx.globalAlpha = fade;
       ctx.fillText(`${this.winner} Wins!`, w / 2, h / 2 - 30);
 
-      // Checkered flag emoji + subtitle
-      ctx.font = "bold 28px monospace";
+      // Winner time
+      const wMins = Math.floor(this.winnerTime / 60);
+      const wSecs = Math.floor(this.winnerTime % 60);
+      const wMs = Math.floor((this.winnerTime % 1) * 100);
+      const wTimeStr = `${wMins}:${String(wSecs).padStart(2, "0")}.${String(wMs).padStart(2, "0")}`;
+      ctx.font = "bold 32px monospace";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText("RACE FINISHED", w / 2, h / 2 + 30);
+      ctx.fillText(wTimeStr, w / 2, h / 2 + 30);
+
+      // Subtitle
+      ctx.font = "bold 22px monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.fillText("RACE FINISHED", w / 2, h / 2 + 70);
 
       if (this.winTime > 2) {
         ctx.font = "18px monospace";
         ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(this.winTime * 4) * 0.3})`;
-        ctx.fillText("Press SPACE to restart", w / 2, h / 2 + 80);
+        ctx.fillText("Press SPACE to restart", w / 2, h / 2 + 120);
       }
 
       ctx.globalAlpha = 1;
