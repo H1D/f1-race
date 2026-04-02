@@ -10,7 +10,7 @@ export const canalLock: PowerupDefinition = {
 
   spawn: {
     radius: 18,
-    color: "#88ee22",
+    color: "#cc2255",
     icon: "🌉",
   },
 
