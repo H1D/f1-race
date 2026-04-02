@@ -10,6 +10,7 @@ import type {
   Particle,
   PowerupDefinition,
   PowerupToast,
+  SoundSystem,
   SpawnManagerState,
   TrackBounds,
 } from "../types";
@@ -53,6 +54,16 @@ import {
   updateParticles,
 } from "../systems/particles";
 import { EditorState } from "../editor/editor-state";
+import {
+  createSoundSystem,
+  loadSoundDefinitions,
+  initAudio,
+  playSound,
+  startContinuous,
+  updateContinuous,
+  updateSound,
+  destroySound,
+} from "../sound/sound";
 import {
   createFloodSystem,
   createBoatPenalty,
@@ -116,6 +127,15 @@ export class RacingState implements GameState {
   private penalty2!: BoatPenalty;
   private particles!: Particle[];
   private toasts: PowerupToast[] = [];
+  private sound!: SoundSystem;
+  private _audioInitHandler: (() => void) | null = null;
+  private wallResult: CollisionResult = {
+    collided: false, contactX: 0, contactY: 0,
+    normalX: 0, normalY: 0, impactSpeed: 0,
+  };
+  private prevPenalty1Active = false;
+  private prevPenalty2Active = false;
+  private prevFloodCountdown = 0;
   private winner: string | null = null;
   private winTime = 0;
   private raceStartGrace = 2; // seconds before finish line activates
@@ -211,6 +231,19 @@ export class RacingState implements GameState {
 
     this.gameLog.log(UI.log.raceStarted, "system");
 
+    // Sound system — AudioContext deferred to first keypress (browser autoplay policy)
+    this.sound = createSoundSystem();
+    loadSoundDefinitions(this.sound);
+    this._audioInitHandler = () => {
+      initAudio(this.sound);
+      startContinuous(this.sound, "engine", "p1");
+      startContinuous(this.sound, "engine", "p2");
+      startContinuous(this.sound, "water-ambient");
+      window.removeEventListener("keydown", this._audioInitHandler!);
+      this._audioInitHandler = null;
+    };
+    window.addEventListener("keydown", this._audioInitHandler);
+
     // Editor button
     this.editorBtn = document.createElement("button");
     this.editorBtn.textContent = "Editor";
@@ -224,6 +257,11 @@ export class RacingState implements GameState {
   }
 
   exit() {
+    destroySound(this.sound);
+    if (this._audioInitHandler) {
+      window.removeEventListener("keydown", this._audioInitHandler);
+      this._audioInitHandler = null;
+    }
     if (this.restartHandler) {
       window.removeEventListener("keydown", this.restartHandler);
       this.restartHandler = null;
@@ -307,23 +345,57 @@ export class RacingState implements GameState {
     checkFloodPenalty(this.player2, this.map, this.flood, this.penalty2);
     markPenaltyChecked(this.flood);
 
-    // Player 1: penalty → physics → collision → particles
+    // Player 1: penalty → physics → collision → particles → sound
     updateBoatPenalty(this.player1, this.map, this.penalty1, dt);
     if (!this.penalty1.active) {
       updatePhysics(this.player1, input.player1, dt);
-      resolveMapCollisions(this.player1, this.map, flooded);
+      resolveMapCollisions(this.player1, this.map, flooded, this.wallResult);
+      if (this.wallResult.collided) {
+        playSound(this.sound, "wall-collision", {
+          intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
+        });
+      }
     }
     emitWake(this.particles, this.player1);
     emitBowSpray(this.particles, this.player1);
 
-    // Player 2: penalty → physics → collision → particles
+    // Player 2: penalty → physics → collision → particles → sound
     updateBoatPenalty(this.player2, this.map, this.penalty2, dt);
     if (!this.penalty2.active) {
       updatePhysics(this.player2, input.player2, dt);
-      resolveMapCollisions(this.player2, this.map, flooded);
+      resolveMapCollisions(this.player2, this.map, flooded, this.wallResult);
+      if (this.wallResult.collided) {
+        playSound(this.sound, "wall-collision", {
+          intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
+        });
+      }
     }
     emitWake(this.particles, this.player2);
     emitBowSpray(this.particles, this.player2);
+
+    // Engine + ambient continuous sound updates
+    const v1 = this.player1.velocity;
+    const s1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);
+    updateContinuous(this.sound, "engine", {
+      voltage: this.player1.motor?.voltage ?? 0,
+      speed: s1,
+      maxSpeed: this.player1.boatPhysics?.maxSpeed ?? 10,
+      intensity: 1,
+    }, "p1");
+    const v2 = this.player2.velocity;
+    const s2 = Math.sqrt(v2.x ** 2 + v2.y ** 2);
+    updateContinuous(this.sound, "engine", {
+      voltage: this.player2.motor?.voltage ?? 0,
+      speed: s2,
+      maxSpeed: this.player2.boatPhysics?.maxSpeed ?? 10,
+      intensity: 1,
+    }, "p2");
+    updateContinuous(this.sound, "water-ambient", {
+      voltage: 0,
+      speed: (s1 + s2) / 2,
+      maxSpeed: this.player1.boatPhysics?.maxSpeed ?? 10,
+      intensity: 1,
+    });
 
     // Boat-to-boat collision
     const boatHit = resolveBoatCollision(this.player1, this.player2);
@@ -343,6 +415,9 @@ export class RacingState implements GameState {
           (this.player1.velocity.y - this.player2.velocity.y) ** 2,
       );
       emitCollisionSparks(this.particles, this.collisionResult);
+      playSound(this.sound, "boat-collision", {
+        intensity: Math.min(this.collisionResult.impactSpeed / 10, 1),
+      });
     } else {
       this.collisionResult.collided = false;
     }
@@ -426,6 +501,7 @@ export class RacingState implements GameState {
           boat,
         });
       }
+      playSound(this.sound, "pickup");
     }
 
     // Tick and expire toasts
@@ -456,6 +532,7 @@ export class RacingState implements GameState {
         if (def) {
           this.gameLog.log(UI.log.effectExpired(def.visual?.hudIcon ?? "?", def.name), "effect");
         }
+        playSound(this.sound, "expire");
       }
     }
 
@@ -473,11 +550,33 @@ export class RacingState implements GameState {
     if (this.floodState.active !== this.prevFloodActive) {
       if (this.floodState.active) {
         this.gameLog.log(UI.log.floodingStarted, "flood");
+        playSound(this.sound, "flood-start");
       } else {
         this.gameLog.log(UI.log.floodReceding, "flood");
+        playSound(this.sound, "flood-end");
       }
       this.prevFloodActive = this.floodState.active;
     }
+
+    // Flood countdown warning beeps
+    if (this.flood.state === "idle") {
+      const until = Math.max(0, this.flood.cycleInterval - this.flood.timer);
+      const n = Math.ceil(until);
+      if (until <= 5 && n !== this.prevFloodCountdown && n > 0) {
+        playSound(this.sound, "flood-warning");
+      }
+      this.prevFloodCountdown = n;
+    } else {
+      this.prevFloodCountdown = 0;
+    }
+
+    // Penalty activation sounds (rising edge only)
+    if (this.penalty1.active && !this.prevPenalty1Active) playSound(this.sound, "penalty");
+    this.prevPenalty1Active = this.penalty1.active;
+    if (this.penalty2.active && !this.prevPenalty2Active) playSound(this.sound, "penalty");
+    this.prevPenalty2Active = this.penalty2.active;
+
+    updateSound(this.sound, dt);
   }
 
   render(ctx: CanvasRenderingContext2D, alpha: number) {

@@ -294,3 +294,81 @@ export interface FloodState {
   level: number; // 0..1
   timeRemaining: number;
 }
+
+// === Sound system ===
+export type SoundCategory = "engine" | "collision" | "pickup" | "flood" | "ambient" | "penalty";
+
+export interface SoundEnvelope {
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+}
+
+export interface OscillatorConfig {
+  type: OscillatorType;
+  frequency: number;
+  detune?: number;
+  gainMultiplier?: number;
+}
+
+export interface NoiseConfig {
+  type: "white" | "pink" | "brown";
+  gainMultiplier: number;
+}
+
+export interface FilterConfig {
+  type: BiquadFilterType;
+  frequency: number;
+  Q?: number;
+}
+
+export interface SoundDefinition {
+  id: string;
+  category: SoundCategory;
+  mode: "oneshot" | "continuous";
+  oscillators?: OscillatorConfig[];
+  noise?: NoiseConfig;
+  filter?: FilterConfig;
+  envelope: SoundEnvelope;
+  duration?: number;
+  mapParams?: {
+    frequency?: (params: SoundParams) => number;
+    gain?: (params: SoundParams) => number;
+    filterFreq?: (params: SoundParams) => number;
+  };
+  maxVoices: number;
+}
+
+export interface SoundParams {
+  voltage: number;
+  speed: number;
+  maxSpeed: number;
+  intensity: number;
+}
+
+export interface ActiveVoice {
+  id: number;
+  definitionId: string;
+  tag: string;
+  oscillators: OscillatorNode[];
+  noiseSource: AudioBufferSourceNode | null;
+  gainNode: GainNode;
+  filterNode: BiquadFilterNode | null;
+  startTime: number;
+  duration: number;
+  releaseTime: number;
+  releaseDuration: number;
+  active: boolean;
+}
+
+export interface SoundSystem {
+  ctx: AudioContext | null;
+  masterGain: GainNode | null;
+  categoryGains: Map<SoundCategory, GainNode>;
+  definitions: Map<string, SoundDefinition>;
+  voices: ActiveVoice[];
+  nextVoiceId: number;
+  initialized: boolean;
+  noiseBuffers: Map<string, AudioBuffer>;
+}

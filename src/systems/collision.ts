@@ -1,4 +1,4 @@
-import type { Entity, MapData, TrackBounds } from "../types";
+import type { CollisionResult, Entity, MapData, TrackBounds } from "../types";
 import { pointInPolygon, findNearestEdge } from "../map/geometry";
 
 const PUSH_DIST = 6;
@@ -139,8 +139,12 @@ export function resolveBoatCollision(a: Entity, b: Entity): boolean {
   return true;
 }
 
-/** Polygon-based collision for MapData */
-export function resolveMapCollisions(entity: Entity, map: MapData, flooding = false): void {
+/** Polygon-based collision for MapData. Optional `result` out-param reports wall hits for sound. */
+export function resolveMapCollisions(
+  entity: Entity, map: MapData, flooding = false, result?: CollisionResult,
+): void {
+  if (result) result.collided = false;
+
   const pos = entity.transform.pos;
   const vel = entity.velocity;
 
@@ -158,18 +162,35 @@ export function resolveMapCollisions(entity: Entity, map: MapData, flooding = fa
   if (map.outline.length >= 3) {
     if (!pointInPolygon(pos, map.outline)) {
       const edge = findNearestEdge(pos, map.outline);
+      const impactSpeed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
       pos.x = edge.point.x - edge.nx * (PUSH_DIST + BOAT_RADIUS);
       pos.y = edge.point.y - edge.ny * (PUSH_DIST + BOAT_RADIUS);
       wallResponse(vel, -edge.nx, -edge.ny);
+      if (result) {
+        result.collided = true;
+        result.contactX = edge.point.x;
+        result.contactY = edge.point.y;
+        result.normalX = -edge.nx;
+        result.normalY = -edge.ny;
+        result.impactSpeed = impactSpeed;
+      }
     } else {
       const edge = findNearestEdge(pos, map.outline);
       if (edge.distSq < BOAT_RADIUS * BOAT_RADIUS) {
         const dist = Math.sqrt(edge.distSq);
         const penetration = BOAT_RADIUS - dist;
-        // Push inward (away from outer wall = opposite of outward normal)
+        const impactSpeed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         pos.x -= edge.nx * (penetration + PUSH_DIST);
         pos.y -= edge.ny * (penetration + PUSH_DIST);
         wallResponse(vel, -edge.nx, -edge.ny);
+        if (result) {
+          result.collided = true;
+          result.contactX = edge.point.x;
+          result.contactY = edge.point.y;
+          result.normalX = -edge.nx;
+          result.normalY = -edge.ny;
+          result.impactSpeed = impactSpeed;
+        }
       }
     }
   }
@@ -178,18 +199,35 @@ export function resolveMapCollisions(entity: Entity, map: MapData, flooding = fa
   if (map.island.length >= 3) {
     if (pointInPolygon(pos, map.island)) {
       const edge = findNearestEdge(pos, map.island);
+      const impactSpeed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
       pos.x = edge.point.x + edge.nx * (PUSH_DIST + BOAT_RADIUS);
       pos.y = edge.point.y + edge.ny * (PUSH_DIST + BOAT_RADIUS);
       wallResponse(vel, edge.nx, edge.ny);
+      if (result) {
+        result.collided = true;
+        result.contactX = edge.point.x;
+        result.contactY = edge.point.y;
+        result.normalX = edge.nx;
+        result.normalY = edge.ny;
+        result.impactSpeed = impactSpeed;
+      }
     } else {
       const edge = findNearestEdge(pos, map.island);
       if (edge.distSq < BOAT_RADIUS * BOAT_RADIUS) {
         const dist = Math.sqrt(edge.distSq);
         const penetration = BOAT_RADIUS - dist;
-        // Push outward (along island's outward normal)
+        const impactSpeed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         pos.x += edge.nx * (penetration + PUSH_DIST);
         pos.y += edge.ny * (penetration + PUSH_DIST);
         wallResponse(vel, edge.nx, edge.ny);
+        if (result) {
+          result.collided = true;
+          result.contactX = edge.point.x;
+          result.contactY = edge.point.y;
+          result.normalX = edge.nx;
+          result.normalY = edge.ny;
+          result.impactSpeed = impactSpeed;
+        }
       }
     }
   }
