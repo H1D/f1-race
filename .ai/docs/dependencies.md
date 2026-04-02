@@ -17,14 +17,22 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[7]{module,depends_on}:
+modules[8]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
   racing-state,entity + track + physics + collision + camera + boat-render + background-render + debug
   physics,types (Entity + InputState)
   collision,types (Entity + TrackBounds)
   camera,types (CameraState + Entity)
-  boat-render,types (Entity)
+  boat-render,types (Entity) + boat.png sprite
   background-render,types (TrackBounds)
+  debug,types (BoatPhysicsComponent)
+```
+
+## Assets
+
+```toon
+assets[1]{path,type,used_by}:
+  src/boat/boat.png,sprite,boat-render (copied to dist/ by build.ts + serve.ts)
 ```
 
 ## External Services

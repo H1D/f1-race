@@ -1,6 +1,6 @@
 # Boat Physics
 
-Core physics simulation for boat movement. Uses motor voltage ramp for throttle, anisotropic drag for realistic water feel, and speed-dependent steering.
+Core physics simulation ported from the boat branch. World-space velocity with per-frame local decomposition, motor voltage ramp for throttle, anisotropic drag for realistic water feel, speed-dependent steering, and max speed cap.
 
 ```toon
 status: active
@@ -8,21 +8,30 @@ depends_on[1]: input
 entry_point: src/systems/physics.ts
 
 files[4]{path,purpose}:
-  src/systems/physics.ts,physics update system — drag + thrust + steering
-  src/systems/collision.ts,AABB boundary enforcement against canal walls
-  src/entity.ts,boat entity factory with default physics params
+  src/systems/physics.ts,physics update — world-space decompose + drag + thrust + recompose
+  src/systems/collision.ts,AABB boundary enforcement against canal walls (world-space vel)
+  src/entity.ts,boat entity factory with boat-branch-tuned physics defaults
   src/debug.ts,runtime tuning panel with presets (yacht/speedboat/dinghy/tugboat)
 ```
 
-## Design Notes
+## Physics Model
 
-- Velocity is decomposed into local forward/lateral components each frame, drag applied independently, then recomposed to world space
-- Motor voltage ramps up at 1.5/s and down at 2.5/s — creates momentum feel
-- Steering torque scales with `min(1, |forwardSpeed| / turnSpeedReference)` — can't turn a stationary boat
-- Four presets available via debug menu (backtick key): Yacht (default), Speedboat, Dinghy, Tugboat
+- Velocity stored in world space (`vel.x`, `vel.y`) — decomposed to local frame each tick via dot product with heading vectors
+- When boat turns, world momentum stays fixed → forward momentum becomes lateral → lateral drag kills it → natural drift
+- Drag applied before thrust (boat branch order): `forwardSpeed *= (1 - forwardDrag)`, `lateralSpeed *= (1 - lateralDrag)`
+- Thrust: `forwardSpeed += motorVoltage * thrustForce * dt`
+- Steering scales with `min(1, |forwardSpeed| / turnSpeedReference)` — can't turn a stationary boat
+- Integration: `pos += vel` (velocity is in px/frame units at 60Hz)
+
+## Default Values (Yacht preset from boat branch)
+
+- `forwardDrag: 0.015`, `lateralDrag: 0.95` (63:1 ratio)
+- `angularDamping: 0.4`, `turnTorque: 3.5`, `turnSpeedReference: 3.0`
+- `thrustForce: 6.0`, `maxSpeed: 10.0`
+- Motor ramp: up 1.5/s, down 2.5/s
 
 ## Gotchas
 
-- `boatPhysics` component on entity duplicates some values from `src/boat/boat.ts` — the ECS version in `entity.ts` is the one used by the physics system
-- `src/boat/boat.ts` has its own standalone physics and render — appears to be an earlier standalone module, not used by the ECS pipeline
-- Debug menu uses `Object.assign` to swap presets — mutates the entity's `boatPhysics` component directly
+- `src/boat/boat.ts` is a legacy standalone module — not used by the ECS pipeline. Physics values originate from it but live in `entity.ts` `boatPhysics` component
+- `MotorComponent.maxForce` is vestigial — thrust comes from `boatPhysics.thrustForce`
+- Debug menu mutates `boatPhysics` component directly via `Object.assign` — changes apply immediately
