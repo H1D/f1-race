@@ -48,7 +48,7 @@ import {
   checkFloodPenalty,
   markPenaltyChecked,
   updateBoatPenalty,
-  renderFlood,
+  renderFloodScreen,
   renderFloodedAttributes,
   createFloodSettingsPanel,
   type FloodSystem,
@@ -353,9 +353,8 @@ export class RacingState implements GameState {
     updateCamera(this.camera, w, h, this.lastDt);
     applyCameraTransform(ctx, this.camera, w, h);
 
-    // World (polygon map) + flood overlay
+    // World (polygon map)
     renderMap(ctx, this.map);
-    renderFlood(ctx, this.map, this.flood);
     renderFloodedAttributes(ctx, this.map, this.flood);
 
     // Zones (ground level, under boats)
@@ -382,7 +381,11 @@ export class RacingState implements GameState {
 
     ctx.restore();
 
+    // Flood overlay in screen space (bottom → top)
+    renderFloodScreen(ctx, this.flood, w, h);
+
     this.renderHUD(ctx, w);
+    this.renderFloodHUD(ctx, w, h);
     renderEffectsHUD(ctx, this.player1, this.powerupDefs, w);
 
     // Event log
@@ -409,9 +412,6 @@ export class RacingState implements GameState {
       this.penalty2.active ? `P2: PENALTY ${this.penalty2.remaining.toFixed(1)}s` : `P2: ${s2.toFixed(0)}`,
       w - 20, 50,
     );
-
-    // Flood status
-    this.renderFloodHUD(ctx, w);
   }
 
   private renderBoatWithPenalty(
@@ -431,25 +431,45 @@ export class RacingState implements GameState {
     }
   }
 
-  private renderFloodHUD(ctx: CanvasRenderingContext2D, w: number) {
+  private renderFloodHUD(ctx: CanvasRenderingContext2D, w: number, h: number) {
     if (!this.flood.enabled) return;
     const f = this.flood;
-    ctx.font = "12px monospace";
+    const cx = w / 2;
+    const cy = h / 2;
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
-    if (f.state === "flooding") {
-      const remaining = Math.max(0, f.floodDuration - f.timer);
-      ctx.fillStyle = `rgba(50,150,255,${0.6 + Math.sin(Date.now() / 200) * 0.2})`;
-      ctx.fillText(`FLOOD ${remaining.toFixed(1)}s`, w / 2, 30);
-    } else if (f.state === "recovering") {
-      ctx.fillStyle = "rgba(50,150,255,0.4)";
-      ctx.fillText("RECEDING...", w / 2, 30);
-    } else {
+    if (f.state === "idle") {
       const until = Math.max(0, f.cycleInterval - f.timer);
-      if (until < 5) {
-        ctx.fillStyle = `rgba(255,200,50,${0.3 + Math.sin(Date.now() / 300) * 0.2})`;
-        ctx.fillText(`FLOOD IN ${until.toFixed(1)}s`, w / 2, 30);
+      if (until <= 5) {
+        const n = Math.ceil(until);
+        const pulse = 1 + Math.sin(Date.now() / 150) * 0.15;
+        const size = Math.round(64 * pulse);
+        ctx.font = `bold ${size}px monospace`;
+        ctx.fillStyle = `rgba(255,200,50,${0.8 + Math.sin(Date.now() / 200) * 0.2})`;
+        ctx.fillText(`FLOODING IN ${n}`, cx, cy);
       }
+    } else if (f.state === "flooding") {
+      const remaining = Math.max(0, f.floodDuration - f.timer);
+      const n = Math.ceil(remaining);
+
+      ctx.font = "bold 56px monospace";
+      ctx.fillStyle = `rgba(50,180,255,${0.8 + Math.sin(Date.now() / 200) * 0.15})`;
+      ctx.fillText("FLOODED", cx, cy - 30);
+
+      if (remaining <= 5) {
+        const pulse = 1 + Math.sin(Date.now() / 150) * 0.1;
+        const size = Math.round(48 * pulse);
+        ctx.font = `bold ${size}px monospace`;
+        ctx.fillStyle = "rgba(255,150,50,0.9)";
+        ctx.fillText(`ENDS IN ${n}`, cx, cy + 35);
+      }
+    } else if (f.state === "recovering") {
+      ctx.font = "bold 44px monospace";
+      ctx.fillStyle = "rgba(50,150,255,0.5)";
+      ctx.fillText("RECEDING...", cx, cy);
     }
+
+    ctx.textBaseline = "alphabetic";
   }
 }

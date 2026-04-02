@@ -181,38 +181,54 @@ export function updateBoatPenalty(
   }
 }
 
-/** Render the flood water overlay */
-export function renderFlood(
+/** Render the flood water overlay in SCREEN SPACE — rises from bottom, recedes downward */
+export function renderFloodScreen(
   ctx: CanvasRenderingContext2D,
-  map: MapData,
   flood: FloodSystem,
+  screenW: number,
+  screenH: number,
 ): void {
   if (flood.waterLevel <= 0) return;
 
-  const ws = map.worldSize;
-  const extent = ws + 200;
-  const alpha = flood.waterLevel * 0.85;
+  // Water rises from bottom of screen to top
+  const coveredH = screenH * flood.waterLevel;
+  const waterTop = screenH - coveredH;
 
-  // Water overlay on land areas
-  ctx.fillStyle = `rgba(26, 58, 92, ${alpha})`;
-  ctx.fillRect(-extent, -extent, extent * 2, extent * 2);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, waterTop, screenW, coveredH);
+  ctx.clip();
 
-  // Subtle wave lines during flood
-  if (flood.waterLevel > 0.5) {
-    const waveAlpha = (flood.waterLevel - 0.5) * 0.1;
-    ctx.strokeStyle = `rgba(255,255,255,${waveAlpha})`;
-    ctx.lineWidth = 1;
-    const t = Date.now() / 1000;
-    for (let y = -extent; y < extent; y += 40) {
-      ctx.beginPath();
-      for (let x = -extent; x < extent; x += 10) {
-        const wy = y + Math.sin(x * 0.02 + t * 2 + y * 0.01) * 5;
-        if (x === -extent) ctx.moveTo(x, wy);
-        else ctx.lineTo(x, wy);
-      }
-      ctx.stroke();
+  // Water fill — semi-transparent so boats are visible through it
+  ctx.fillStyle = "rgba(26, 58, 92, 0.35)";
+  ctx.fillRect(0, 0, screenW, screenH);
+
+  // Wave lines
+  const t = Date.now() / 1000;
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineWidth = 1;
+  for (let y = waterTop; y < screenH; y += 30) {
+    ctx.beginPath();
+    for (let x = 0; x < screenW; x += 8) {
+      const wy = y + Math.sin(x * 0.03 + t * 2 + y * 0.01) * 4;
+      if (x === 0) ctx.moveTo(x, wy);
+      else ctx.lineTo(x, wy);
     }
+    ctx.stroke();
   }
+
+  // Leading edge foam line
+  ctx.strokeStyle = "rgba(200,230,255,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x < screenW; x += 6) {
+    const wy = waterTop + Math.sin(x * 0.04 + t * 3) * 3;
+    if (x === 0) ctx.moveTo(x, wy);
+    else ctx.lineTo(x, wy);
+  }
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /** Render lifted attribute markers during flood */
