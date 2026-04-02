@@ -40,6 +40,20 @@ import {
   updateParticles,
 } from "../systems/particles";
 import { EditorState } from "../editor/editor-state";
+import {
+  createFloodSystem,
+  createBoatPenalty,
+  updateFlood,
+  isFlooding,
+  checkFloodPenalty,
+  markPenaltyChecked,
+  updateBoatPenalty,
+  renderFlood,
+  renderFloodedAttributes,
+  createFloodSettingsPanel,
+  type FloodSystem,
+  type BoatPenalty,
+} from "../systems/flooding";
 
 /** Derive TrackBounds from polygon MapData for powerup spawn point generation. */
 function trackBoundsFromMap(map: MapData): TrackBounds {
@@ -83,6 +97,10 @@ export class RacingState implements GameState {
   private gameLog!: GameLog;
   private prevFloodActive = false;
   private lastDt = 1 / 60;
+  private flood!: FloodSystem;
+  private floodPanel: HTMLElement | null = null;
+  private penalty1!: BoatPenalty;
+  private penalty2!: BoatPenalty;
   private particles!: Particle[];
   private collisionResult: CollisionResult = {
     collided: false,
@@ -128,6 +146,10 @@ export class RacingState implements GameState {
     };
 
     this.particles = createParticlePool(512);
+    this.flood = createFloodSystem();
+    this.penalty1 = createBoatPenalty();
+    this.penalty2 = createBoatPenalty();
+    this.floodPanel = createFloodSettingsPanel(this.flood);
 
     if (this.player1.boatPhysics) {
       this.debugPanel = createDebugMenu(
@@ -178,25 +200,48 @@ export class RacingState implements GameState {
   }
 
   exit() {
-    this.powerupDebugPanel?.remove(); // clears interval timer
+    this.powerupDebugPanel?.remove();
     this.debugPanel?.remove();
     this.editorBtn?.remove();
+    this.floodPanel?.remove();
     document.getElementById("debug-toggle")?.remove();
+    document.getElementById("flood-toggle-btn")?.remove();
   }
 
   update(dt: number, input: DualInput) {
     this.lastDt = dt;
     this.gameLog.elapsedTime += dt;
 
-    // Player 1: physics → collision → particles
-    updatePhysics(this.player1, input.player1, dt);
-    resolveMapCollisions(this.player1, this.map);
+    // Flood system
+    updateFlood(this.flood, dt);
+    const flooded = isFlooding(this.flood);
+
+    // Sync flood state for powerup system
+    this.floodState.active = flooded;
+    this.floodState.level = this.flood.waterLevel;
+    this.floodState.timeRemaining = this.flood.state === "flooding"
+      ? Math.max(0, this.flood.floodDuration - this.flood.timer) : 0;
+
+    // Check penalties when flood recedes
+    checkFloodPenalty(this.player1, this.map, this.flood, this.penalty1);
+    checkFloodPenalty(this.player2, this.map, this.flood, this.penalty2);
+    markPenaltyChecked(this.flood);
+
+    // Player 1: penalty → physics → collision → particles
+    updateBoatPenalty(this.player1, this.map, this.penalty1, dt);
+    if (!this.penalty1.active) {
+      updatePhysics(this.player1, input.player1, dt);
+      resolveMapCollisions(this.player1, this.map, flooded);
+    }
     emitWake(this.particles, this.player1);
     emitBowSpray(this.particles, this.player1);
 
-    // Player 2: physics → collision → particles
-    updatePhysics(this.player2, input.player2, dt);
-    resolveMapCollisions(this.player2, this.map);
+    // Player 2: penalty → physics → collision → particles
+    updateBoatPenalty(this.player2, this.map, this.penalty2, dt);
+    if (!this.penalty2.active) {
+      updatePhysics(this.player2, input.player2, dt);
+      resolveMapCollisions(this.player2, this.map, flooded);
+    }
     emitWake(this.particles, this.player2);
     emitBowSpray(this.particles, this.player2);
 
@@ -286,8 +331,10 @@ export class RacingState implements GameState {
     updateCamera(this.camera, w, h, this.lastDt);
     applyCameraTransform(ctx, this.camera, w, h);
 
-    // World (polygon map)
+    // World (polygon map) + flood overlay
     renderMap(ctx, this.map);
+    renderFlood(ctx, this.map, this.flood);
+    renderFloodedAttributes(ctx, this.map, this.flood);
 
     // Zones (ground level, under boats)
     const zones = this.entityManager.getWithComponent("zone");
@@ -305,8 +352,8 @@ export class RacingState implements GameState {
     // Particles (world-space)
     renderParticles(ctx, this.particles);
 
-    renderBoat(ctx, this.player1, alpha);
-    renderBoat(ctx, this.player2, alpha);
+    this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
+    this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
     renderBridges(ctx, this.map);
 
     renderActiveEffectVisuals(ctx, this.player1, this.powerupDefs, alpha);
@@ -329,10 +376,58 @@ export class RacingState implements GameState {
     ctx.font = "14px monospace";
     ctx.textAlign = "right";
 
-    ctx.fillStyle = "rgba(224,64,64,0.6)";
-    ctx.fillText(`P1: ${s1.toFixed(0)}`, w - 20, 30);
+    ctx.fillStyle = this.penalty1.active ? "rgba(255,80,80,0.9)" : "rgba(224,64,64,0.6)";
+    ctx.fillText(
+      this.penalty1.active ? `P1: PENALTY ${this.penalty1.remaining.toFixed(1)}s` : `P1: ${s1.toFixed(0)}`,
+      w - 20, 30,
+    );
 
-    ctx.fillStyle = "rgba(224,192,64,0.6)";
-    ctx.fillText(`P2: ${s2.toFixed(0)}`, w - 20, 50);
+    ctx.fillStyle = this.penalty2.active ? "rgba(255,200,80,0.9)" : "rgba(224,192,64,0.6)";
+    ctx.fillText(
+      this.penalty2.active ? `P2: PENALTY ${this.penalty2.remaining.toFixed(1)}s` : `P2: ${s2.toFixed(0)}`,
+      w - 20, 50,
+    );
+
+    // Flood status
+    this.renderFloodHUD(ctx, w);
+  }
+
+  private renderBoatWithPenalty(
+    ctx: CanvasRenderingContext2D,
+    boat: Entity,
+    alpha: number,
+    penalty: BoatPenalty,
+  ) {
+    if (penalty.active) {
+      const flash = Math.sin(Date.now() / 125 * Math.PI) > 0;
+      if (!flash) return;
+      ctx.globalAlpha = 0.5;
+      renderBoat(ctx, boat, alpha);
+      ctx.globalAlpha = 1;
+    } else {
+      renderBoat(ctx, boat, alpha);
+    }
+  }
+
+  private renderFloodHUD(ctx: CanvasRenderingContext2D, w: number) {
+    if (!this.flood.enabled) return;
+    const f = this.flood;
+    ctx.font = "12px monospace";
+    ctx.textAlign = "center";
+
+    if (f.state === "flooding") {
+      const remaining = Math.max(0, f.floodDuration - f.timer);
+      ctx.fillStyle = `rgba(50,150,255,${0.6 + Math.sin(Date.now() / 200) * 0.2})`;
+      ctx.fillText(`FLOOD ${remaining.toFixed(1)}s`, w / 2, 30);
+    } else if (f.state === "recovering") {
+      ctx.fillStyle = "rgba(50,150,255,0.4)";
+      ctx.fillText("RECEDING...", w / 2, 30);
+    } else {
+      const until = Math.max(0, f.cycleInterval - f.timer);
+      if (until < 5) {
+        ctx.fillStyle = `rgba(255,200,50,${0.3 + Math.sin(Date.now() / 300) * 0.2})`;
+        ctx.fillText(`FLOOD IN ${until.toFixed(1)}s`, w / 2, 30);
+      }
+    }
   }
 }
