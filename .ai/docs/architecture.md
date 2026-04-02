@@ -3,7 +3,7 @@
 ## Component Map
 
 ```toon
-components[24]{name,type,path,responsibility}:
+components[25]{name,type,path,responsibility}:
   main,bootstrap,src/main.ts,canvas setup + wires dual-player input/state/loop
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
@@ -21,7 +21,8 @@ components[24]{name,type,path,responsibility}:
   powerup-spawn,system,src/systems/powerup-spawn.ts,timer-based weighted powerup spawning on canal/street spawn points
   powerup-collision,system,src/systems/powerup-collision.ts,circle-circle pickup detection → PickupEvent[]
   powerup-effects,system,src/systems/powerup-effects.ts,effect apply (stacking rules) + tick + expire lifecycle
-  powerup-render,system,src/systems/powerup-render.ts,render pickups + zones + obstacles + effect visuals + effects HUD
+  powerup-render,system,src/systems/powerup-render.ts,render pickups + zones + obstacles + effect visuals (pulsing radial gradient glow) + effects HUD + pickup name toasts (PowerupToast fade/drift)
+  ui-text,data,src/ui-text.ts,all player-visible strings — static values + typed template functions for dynamic labels
   entity-lifetime,system,src/systems/entity-lifetime.ts,countdown → mark entities for removal
   entity-cleanup,system,src/systems/entity-cleanup.ts,remove entities marked for removal
   zone-effects,system,src/systems/zone-effects.ts,area-of-effect processing for zone entities
@@ -37,7 +38,7 @@ components[24]{name,type,path,responsibility}:
 3. `RacingState.update()` runs physics → collision → particles for each boat, then powerup pipeline → cleanup
 4. Physics: decompose world velocity (vx,vy) into local frame via dot product → anisotropic drag → thrust → recompose to world → cap max speed → integrate
 5. Powerup pipeline: spawn pickups → detect pickup collisions (both boats) → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities
-6. Render phase: clear canvas → `updateCamera(w, h, dt)` → `applyCameraTransform()` → background → zones → pickups → obstacles → particles → both boats → effect visuals → restore → HUD → effects HUD → event log
+6. Render phase: clear canvas → `updateCamera(w, h, dt)` → `applyCameraTransform()` → background → zones → pickups → obstacles → particles → both boats → effect visuals → restore → HUD → effects HUD → pickup toasts → event log
 7. State transitions via `gameCtx.switchState()` (MenuState → RacingState)
 
 ## Patterns

@@ -8,7 +8,7 @@ depends_on[3]: boat-physics,racing,track
 entry_point: src/powerups/registry.ts
 
 files[11]{path,purpose}:
-  src/types.ts,"powerup component interfaces — PowerupPickupComponent, ActiveEffect, ActiveEffectsComponent, LifetimeComponent, ZoneComponent, ColliderComponent, MarkedForRemovalComponent, PowerupDefinition, PickupEvent, SpawnManagerState, FloodState"
+  src/types.ts,"powerup component interfaces — PowerupPickupComponent, ActiveEffect, ActiveEffectsComponent, LifetimeComponent, ZoneComponent, ColliderComponent, MarkedForRemovalComponent, PowerupDefinition, PickupEvent, SpawnManagerState, FloodState, PowerupToast"
   src/entity.ts,"entity factories — createPickupEntity, createObstacleEntity, createZoneEntity"
   src/entity-manager.ts,entity list with tag/component queries + marked-for-removal cleanup
   src/powerups/registry.ts,PowerupDefinition map — register + load all definitions
@@ -16,7 +16,7 @@ files[11]{path,purpose}:
   src/systems/powerup-spawn.ts,timer-based weighted spawn on canal spawn points + flood filtering
   src/systems/powerup-collision.ts,circle-circle detection between boats and pickups → PickupEvent[]
   src/systems/powerup-effects.ts,"apply (with stacking rules) + tick (countdown + onTick) + expire (onExpire + cleanup)"
-  src/systems/powerup-render.ts,"render pickups (bob animation), zones (translucent circles), obstacles, effect visuals (tint rings), effects HUD"
+  src/systems/powerup-render.ts,"render pickups (bob animation), zones (translucent circles), obstacles, effect visuals (pulsing glow halo + tint ring), effects HUD, pickup name toasts (fade + drift)"
   src/systems/entity-lifetime.ts,generic countdown → mark for removal
   src/systems/entity-cleanup.ts,remove entities with markedForRemoval
 ```

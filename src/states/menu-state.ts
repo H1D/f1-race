@@ -1,5 +1,6 @@
 import type { DualInput, GameContext, GameState } from "../types";
 import { RacingState } from "./racing-state";
+import { UI } from "../ui-text";
 
 export class MenuState implements GameState {
   private gameCtx!: GameContext;
@@ -33,14 +34,14 @@ export class MenuState implements GameState {
     ctx.textBaseline = "middle";
 
     ctx.font = "bold 48px monospace";
-    ctx.fillText("BOAT RACE", w / 2, h / 2 - 40);
+    ctx.fillText(UI.menu.title, w / 2, h / 2 - 40);
 
     ctx.font = "20px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.fillText("Press W or UP to race", w / 2, h / 2 + 30);
+    ctx.fillText(UI.menu.startPrompt, w / 2, h / 2 + 30);
 
     ctx.font = "14px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.fillText("P1: WASD  ·  P2: Arrow keys", w / 2, h / 2 + 70);
+    ctx.fillText(UI.menu.controls, w / 2, h / 2 + 70);
   }
 }

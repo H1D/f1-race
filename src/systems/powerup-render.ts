@@ -1,4 +1,4 @@
-import type { Entity, PowerupDefinition } from "../types";
+import type { Entity, PowerupDefinition, PowerupToast } from "../types";
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -140,14 +140,23 @@ export function renderObstacles(
   }
 }
 
+function hexToRgba(hex: string, a: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 /**
- * Draw tinted visual rings around the boat for each active effect that has a boatTint.
+ * Draw a pulsing radial gradient glow halo around the boat for each active effect that has a boatTint,
+ * plus a crisp stroke ring at the boat edge as a sharp border.
  */
 export function renderActiveEffectVisuals(
   ctx: CanvasRenderingContext2D,
   boat: Entity,
   definitions: Map<string, PowerupDefinition>,
   alpha: number,
+  time: number,
 ): void {
   const effects = boat.activeEffects;
   if (!effects || effects.effects.length === 0) return;
@@ -165,18 +174,125 @@ export function renderActiveEffectVisuals(
     if (!def?.visual?.boatTint) continue;
 
     const tint = def.visual.boatTint;
-    const ringRadius = boatRadius + 4 + ringIndex * 3;
+
+    // Pulsing glow halo
+    const glowSize = 18 + ringIndex * 4;
+    const pulse = 1 + Math.sin(time * 3 + ringIndex * 1.2) * 0.12;
+    const outerRadius = (boatRadius + glowSize) * pulse;
+
+    const gradient = ctx.createRadialGradient(x, y, boatRadius, x, y, outerRadius);
+    gradient.addColorStop(0, hexToRgba(tint, 0.45));
+    gradient.addColorStop(1, hexToRgba(tint, 0));
 
     ctx.save();
+    ctx.globalAlpha = 1;
     ctx.beginPath();
-    ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+    ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.restore();
+
+    // Crisp stroke ring at boat edge
+    const strokeRadius = boatRadius + 2 + ringIndex * 4;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, strokeRadius, 0, Math.PI * 2);
     ctx.strokeStyle = tint;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.75;
     ctx.stroke();
     ctx.restore();
 
     ringIndex++;
+  }
+}
+
+/**
+ * Draw a rounded rectangle path (no stroke/fill — caller decides).
+ */
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/**
+ * Render transient pickup-name toasts in world-space, anchored to the boat.
+ * Counter-rotates by (cameraAngle + π/2) so text always reads upright on screen
+ * regardless of camera mode (follow rotates, fixed does not).
+ * Drift is applied after the counter-rotation so it always goes upward on screen.
+ * Must be called while the camera transform is still applied (before ctx.restore).
+ */
+export function renderPickupToasts(
+  ctx: CanvasRenderingContext2D,
+  toasts: PowerupToast[],
+  alpha: number,
+  cameraAngle: number,
+): void {
+  if (toasts.length === 0) return;
+
+  const HOLD_TIME = 0.5; // seconds fully visible before fade begins
+
+  for (const toast of toasts) {
+    // Alpha: hold at 1, then linearly fade to 0
+    const fadeRatio = toast.elapsed > HOLD_TIME
+      ? 1 - (toast.elapsed - HOLD_TIME) / (toast.duration - HOLD_TIME)
+      : 1;
+    const a = Math.max(0, Math.min(1, fadeRatio));
+    if (a <= 0) continue;
+
+    // Interpolated boat position (world-space)
+    const tf = toast.boat.transform;
+    const bx = lerp(tf.prevPos.x, tf.pos.x, alpha);
+    const by = lerp(tf.prevPos.y, tf.pos.y, alpha);
+
+    // Translate to boat, counter-rotate to cancel camera, then drift upward in screen space
+    const drift = toast.elapsed * 22;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(cameraAngle + Math.PI / 2); // net rotation = 0 → local frame = screen frame
+    ctx.translate(0, -(32 + drift));       // screen-up, always
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const label = `${toast.icon}  ${toast.name}`;
+    ctx.font = "bold 14px monospace";
+    const textW = ctx.measureText(label).width;
+    const pad = 10;
+    const pillW = textW + pad * 2;
+    const pillH = 22;
+
+    // Tinted background pill
+    ctx.globalAlpha = a * 0.55;
+    ctx.fillStyle = toast.color;
+    roundRect(ctx, -pillW / 2, -pillH / 2, pillW, pillH, 6);
+    ctx.fill();
+
+    // Subtle white border
+    ctx.globalAlpha = a * 0.35;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    roundRect(ctx, -pillW / 2, -pillH / 2, pillW, pillH, 6);
+    ctx.stroke();
+
+    // Label text
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, 0, 0);
+
+    ctx.restore();
   }
 }
 

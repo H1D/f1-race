@@ -37,7 +37,8 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | powerup-spawn | `src/systems/powerup-spawn.ts` | Timer-based weighted powerup spawning |
 | powerup-collision | `src/systems/powerup-collision.ts` | Circle-circle pickup detection |
 | powerup-effects | `src/systems/powerup-effects.ts` | Effect apply/tick/expire lifecycle with stacking rules |
-| powerup-render | `src/systems/powerup-render.ts` | Render pickups, zones, obstacles, effect visuals, HUD |
+| powerup-render | `src/systems/powerup-render.ts` | Render pickups, zones, obstacles, effect visuals (pulsing radial glow), HUD, pickup name toasts |
+| ui-text | `src/ui-text.ts` | All player-visible strings — static values + typed template functions |
 | entity-lifetime | `src/systems/entity-lifetime.ts` | Countdown → mark for removal |
 | zone-effects | `src/systems/zone-effects.ts` | Area-of-effect processing |
 | game-log | `src/game-log.ts` | Event log with fade/pinned modes |
@@ -50,7 +51,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 2. RacingState runs `updatePhysics()` + `resolveCollisions()` + particle emitters for each boat, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-5. Render: clear → camera transform → background → zones → pickups → obstacles → particles → both boats + effect visuals → HUD → effects HUD → event log
+5. Render: clear → camera transform → background → zones → pickups → obstacles → particles → both boats + effect visuals → HUD → effects HUD → pickup toasts → event log
 
 **Patterns:**
 - **ECS-lite**: Entity = data bag, Systems = pure functions
@@ -77,6 +78,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - Effects use multipliers (`*= 1.5` / `/= 1.5`), not absolute snapshots — order-independent cleanup
 - Powerup definitions can declare `tunables: Record<string, { value, min, max, step }>` — `onApply` reads from tunables at call time, debug panel auto-generates sliders
 - `markedForRemoval` entities are cleaned up at end of update loop — systems must tolerate their presence during the tick
+- All player-visible strings live in `src/ui-text.ts` (`UI` object) — static values or typed arrow-function templates; powerup `name` fields in their definitions are the exception (they are powerup data, not UI chrome)
 - Debug panel (backtick key) has three collapsible sections: BOAT (physics), POWERUPS (spawn + per-powerup tunable knobs), GENERAL (flood/log/live)
 - `build.ts` and `serve.ts` must copy `src/boat/boat.png` to `dist/`
 - Input system returns `DualInput` (`{ player1, player2 }`) — P1=WASD, P2=Arrows

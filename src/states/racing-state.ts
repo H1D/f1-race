@@ -8,6 +8,7 @@ import type {
   GameState,
   Particle,
   PowerupDefinition,
+  PowerupToast,
   SpawnManagerState,
   TrackBounds,
 } from "../types";
@@ -26,10 +27,11 @@ import { detectPowerupPickups } from "../systems/powerup-collision";
 import { applyPickupEvents, tickActiveEffects, processExpirations } from "../systems/powerup-effects";
 import { tickLifetimes } from "../systems/entity-lifetime";
 import { processZoneEffects } from "../systems/zone-effects";
-import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals, renderEffectsHUD } from "../systems/powerup-render";
+import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals, renderEffectsHUD, renderPickupToasts } from "../systems/powerup-render";
 import { loadPowerupDefinitions } from "../powerups/registry";
 import { createPowerupDebugSection } from "../powerup-debug";
 import { createGameLog, renderGameLog, type GameLog } from "../game-log";
+import { UI } from "../ui-text";
 import {
   createParticlePool,
   emitBowSpray,
@@ -56,6 +58,7 @@ export class RacingState implements GameState {
   private prevFloodActive = false;
   private lastDt = 1 / 60;
   private particles!: Particle[];
+  private toasts: PowerupToast[] = [];
   private collisionResult: CollisionResult = {
     collided: false,
     contactX: 0,
@@ -121,7 +124,7 @@ export class RacingState implements GameState {
     });
     this.debugPanel?.appendChild(this.powerupDebugPanel);
 
-    this.gameLog.log("Race started", "system");
+    this.gameLog.log(UI.log.raceStarted, "system");
   }
 
   exit() {
@@ -160,7 +163,7 @@ export class RacingState implements GameState {
     for (const pickup of newPickups) {
       const def = this.powerupDefs.get(pickup.powerupPickup!.powerupId);
       if (def) {
-        this.gameLog.log(`${def.visual?.hudIcon ?? "?"} ${def.name} spawned`, "spawn");
+        this.gameLog.log(UI.log.powerupSpawned(def.visual?.hudIcon ?? "?", def.name), "spawn");
       }
     }
 
@@ -172,9 +175,22 @@ export class RacingState implements GameState {
     for (const event of pickupEvents) {
       const def = this.powerupDefs.get(event.powerupId);
       if (def) {
-        this.gameLog.log(`Player picked up ${def.visual?.hudIcon ?? "?"} ${def.name}`, "pickup");
+        this.gameLog.log(UI.log.pickedUp(def.visual?.hudIcon ?? "?", def.name), "pickup");
+        const boat = event.boatEntityId === this.player1.id ? this.player1 : this.player2;
+        this.toasts.push({
+          name: def.name,
+          icon: def.visual?.hudIcon ?? def.spawn.icon,
+          color: def.spawn.color,
+          elapsed: 0,
+          duration: 2.0,
+          boat,
+        });
       }
     }
+
+    // Tick and expire toasts
+    for (const toast of this.toasts) toast.elapsed += dt;
+    this.toasts = this.toasts.filter((t) => t.elapsed < t.duration);
 
     // Apply pickup effects
     const spawnedEntities = applyPickupEvents(
@@ -198,7 +214,7 @@ export class RacingState implements GameState {
       if (!effectsAfter.has(id)) {
         const def = this.powerupDefs.get(id);
         if (def) {
-          this.gameLog.log(`${def.visual?.hudIcon ?? "?"} ${def.name} expired`, "effect");
+          this.gameLog.log(UI.log.effectExpired(def.visual?.hudIcon ?? "?", def.name), "effect");
         }
       }
     }
@@ -216,9 +232,9 @@ export class RacingState implements GameState {
     // Flood state change detection
     if (this.floodState.active !== this.prevFloodActive) {
       if (this.floodState.active) {
-        this.gameLog.log("Flooding started!", "flood");
+        this.gameLog.log(UI.log.floodingStarted, "flood");
       } else {
-        this.gameLog.log("Flood receding...", "flood");
+        this.gameLog.log(UI.log.floodReceding, "flood");
       }
       this.prevFloodActive = this.floodState.active;
     }
@@ -258,7 +274,10 @@ export class RacingState implements GameState {
     renderBoat(ctx, this.player1, alpha);
     renderBoat(ctx, this.player2, alpha);
 
-    renderActiveEffectVisuals(ctx, this.player1, this.powerupDefs, alpha);
+    renderActiveEffectVisuals(ctx, this.player1, this.powerupDefs, alpha, this.elapsedTime);
+
+    // Pickup toasts — world-space, so rendered before restore
+    renderPickupToasts(ctx, this.toasts, alpha, this.camera.angle);
 
     // Restore to screen space
     ctx.restore();
@@ -279,12 +298,12 @@ export class RacingState implements GameState {
     const vel1 = this.player1.velocity;
     const speed1 = Math.sqrt(vel1.x ** 2 + vel1.y ** 2);
     ctx.fillStyle = "rgba(224,64,64,0.7)";
-    ctx.fillText(`P1 speed: ${speed1.toFixed(0)}`, w - 20, 30);
+    ctx.fillText(UI.hud.p1Speed(speed1.toFixed(0)), w - 20, 30);
 
     // Player 2 stats
     const vel2 = this.player2.velocity;
     const speed2 = Math.sqrt(vel2.x ** 2 + vel2.y ** 2);
     ctx.fillStyle = "rgba(224,192,64,0.7)";
-    ctx.fillText(`P2 speed: ${speed2.toFixed(0)}`, w - 20, 50);
+    ctx.fillText(UI.hud.p2Speed(speed2.toFixed(0)), w - 20, 50);
   }
 }

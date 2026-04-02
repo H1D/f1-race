@@ -17,9 +17,9 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[17]{module,depends_on}:
+modules[19]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
-  racing-state,entity + entity-manager + track + physics + collision + camera + boat-render + background-render + particles + debug + powerup-spawn + powerup-collision + powerup-effects + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry
+  racing-state,entity + entity-manager + track + physics + collision + camera + boat-render + background-render + particles + debug + powerup-spawn + powerup-collision + powerup-effects + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry + ui-text
   physics,types (Entity + InputState)
   collision,types (Entity + TrackBounds + CollisionResult)
   camera,types (CameraState + Entity)
@@ -31,7 +31,9 @@ modules[17]{module,depends_on}:
   powerup-spawn,types + entity (createPickupEntity)
   powerup-collision,types (Entity + PickupEvent)
   powerup-effects,types (Entity + PickupEvent + PowerupDefinition)
-  powerup-render,types (Entity + PowerupDefinition)
+  powerup-render,types (Entity + PowerupDefinition + PowerupToast)
+  ui-text,(none — pure data module)
+  menu-state,types + racing-state + ui-text
   zone-effects,types (Entity + PowerupDefinition)
   entity-lifetime,types (Entity)
   registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag

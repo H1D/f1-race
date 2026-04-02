@@ -219,6 +219,16 @@ export interface PowerupDefinition {
   tunables?: Record<string, { value: number; min: number; max: number; step: number }>;
 }
 
+// === Pickup name toast (transient, world-space — follows the boat) ===
+export interface PowerupToast {
+  name: string;
+  icon: string;
+  color: string;    // background tint matching the powerup orb color
+  elapsed: number;  // seconds since the toast appeared
+  duration: number; // total lifetime (hold + fade)
+  boat: Entity;     // the boat that picked it up — position read each frame
+}
+
 // === Powerup pickup event ===
 export interface PickupEvent {
   boatEntityId: number;
