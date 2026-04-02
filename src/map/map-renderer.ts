@@ -69,30 +69,56 @@ function tracePath(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[
 export function renderMap(ctx: CanvasRenderingContext2D, map: MapData): void {
   const ws = map.worldSize;
   const extent = ws + 200;
+  const t = Date.now() / 1000;
 
-  // Green land fills everything
-  ctx.fillStyle = LAND_COLOR;
+  // ─── Land ────────────────────────────────────────────
+  // Base green with radial gradient for depth
+  const landGrad = ctx.createRadialGradient(0, 0, 100, 0, 0, extent);
+  landGrad.addColorStop(0, "#4a8b45");
+  landGrad.addColorStop(0.5, "#3a6b35");
+  landGrad.addColorStop(1, "#2a5525");
+  ctx.fillStyle = landGrad;
   ctx.fillRect(-extent, -extent, extent * 2, extent * 2);
 
-  // Water channel (inside outline, outside island)
+  // Grass texture — scattered dots
+  ctx.fillStyle = "rgba(80,140,60,0.15)";
+  for (let gx = -extent; gx < extent; gx += 30) {
+    for (let gy = -extent; gy < extent; gy += 30) {
+      const ox = Math.sin(gx * 0.1 + gy * 0.07) * 8;
+      const oy = Math.cos(gx * 0.07 + gy * 0.1) * 8;
+      ctx.beginPath();
+      ctx.arc(gx + ox, gy + oy, 2 + Math.sin(gx + gy) * 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ─── Water channel ───────────────────────────────────
   if (map.outline.length >= 3) {
     ctx.save();
 
-    // Water fill
+    // Water base fill
     ctx.beginPath();
     tracePath(ctx, map.outline);
-    ctx.fillStyle = WATER_COLOR;
+    const waterGrad = ctx.createLinearGradient(-extent, -extent, extent, extent);
+    waterGrad.addColorStop(0, "#1a3a5c");
+    waterGrad.addColorStop(0.5, "#1e4a6e");
+    waterGrad.addColorStop(1, "#162e4a");
+    ctx.fillStyle = waterGrad;
     ctx.fill();
 
-    // Cut out island (fill green on top)
+    // Cut out island
     if (map.island.length >= 3) {
-      ctx.fillStyle = LAND_COLOR;
+      // Island gets its own land gradient
       ctx.beginPath();
       tracePath(ctx, map.island);
+      const islandGrad = ctx.createRadialGradient(0, 0, 50, 0, 0, 600);
+      islandGrad.addColorStop(0, "#4a8b45");
+      islandGrad.addColorStop(1, "#3a6b35");
+      ctx.fillStyle = islandGrad;
       ctx.fill();
     }
 
-    // Water grid clipped to the channel
+    // Clip to water channel for detail rendering
     ctx.beginPath();
     tracePath(ctx, map.outline);
     if (map.island.length >= 3) {
@@ -100,38 +126,94 @@ export function renderMap(ctx: CanvasRenderingContext2D, map: MapData): void {
     }
     ctx.clip("evenodd");
 
-    ctx.strokeStyle = GRID_COLOR;
-    ctx.lineWidth = 1;
-    for (let x = -extent; x <= extent; x += GRID_SIZE) {
+    // Animated wave ripples
+    ctx.strokeStyle = "rgba(100,180,220,0.06)";
+    ctx.lineWidth = 1.5;
+    for (let y = -extent; y < extent; y += 25) {
       ctx.beginPath();
-      ctx.moveTo(x, -extent);
-      ctx.lineTo(x, extent);
+      for (let x = -extent; x < extent; x += 8) {
+        const wy = y + Math.sin(x * 0.015 + t * 1.5 + y * 0.008) * 6;
+        if (x === -extent) ctx.moveTo(x, wy);
+        else ctx.lineTo(x, wy);
+      }
       ctx.stroke();
     }
-    for (let y = -extent; y <= extent; y += GRID_SIZE) {
+
+    // Subtle light caustics
+    ctx.fillStyle = "rgba(120,200,255,0.03)";
+    for (let cx = -extent; cx < extent; cx += 60) {
+      for (let cy = -extent; cy < extent; cy += 60) {
+        const s = 15 + Math.sin(cx * 0.05 + cy * 0.04 + t * 0.8) * 10;
+        if (s > 15) {
+          ctx.beginPath();
+          ctx.ellipse(
+            cx + Math.sin(cy * 0.1 + t) * 10,
+            cy + Math.cos(cx * 0.1 + t * 0.7) * 10,
+            s, s * 0.6, cx * 0.1, 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+      }
+    }
+
+    // Water depth — darker near the edges
+    ctx.strokeStyle = "rgba(0,20,40,0.08)";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    tracePath(ctx, map.outline);
+    ctx.stroke();
+    if (map.island.length >= 3) {
       ctx.beginPath();
-      ctx.moveTo(-extent, y);
-      ctx.lineTo(extent, y);
+      tracePath(ctx, map.island);
       ctx.stroke();
     }
 
     ctx.restore();
 
-    // Wall strokes
-    ctx.strokeStyle = WALL_COLOR;
-    ctx.lineWidth = 4;
+    // ─── Bank edges ──────────────────────────────────────
+    // Outer bank — earthy edge with shadow
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.2)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.strokeStyle = "#7a6040";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    tracePath(ctx, map.outline);
+    ctx.stroke();
+    ctx.restore();
+
+    // Lighter inner line on outer bank
+    ctx.strokeStyle = "rgba(160,130,90,0.4)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     tracePath(ctx, map.outline);
     ctx.stroke();
 
+    // Island bank
     if (map.island.length >= 3) {
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.2)";
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.strokeStyle = "#7a6040";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      tracePath(ctx, map.island);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.strokeStyle = "rgba(160,130,90,0.4)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
       tracePath(ctx, map.island);
       ctx.stroke();
     }
   }
 
-  // Attributes (on land, rendered below bridges)
+  // ─── Attributes ────────────────────────────────────────
   for (const attr of map.attributes) {
     renderAttributeMarker(ctx, attr.position.x, attr.position.y, attr.type);
   }
@@ -175,8 +257,8 @@ export function renderMap(ctx: CanvasRenderingContext2D, map: MapData): void {
   }
 
   // World boundary
-  ctx.strokeStyle = "rgba(255,100,100,0.3)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,100,100,0.2)";
+  ctx.lineWidth = 1;
   ctx.setLineDash([10, 10]);
   ctx.strokeRect(-ws, -ws, ws * 2, ws * 2);
   ctx.setLineDash([]);
@@ -208,23 +290,85 @@ export function renderBridge(
   const dy = y2 - y1;
   const angle = Math.atan2(dy, dx);
   const len = Math.hypot(dx, dy);
+  const hw = width / 2;
+  const railW = width * 0.15;
 
   ctx.save();
   ctx.translate(x1, y1);
   ctx.rotate(angle);
-  ctx.fillStyle = BRIDGE_COLOR;
-  ctx.fillRect(0, -width / 2, len, width);
-  ctx.strokeStyle = WALL_COLOR;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, -width / 2, len, width);
-  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+
+  // Shadow underneath
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillRect(3, -hw + 3, len, width);
+
+  // Main deck — wood gradient
+  const deckGrad = ctx.createLinearGradient(0, -hw, 0, hw);
+  deckGrad.addColorStop(0, "#c49a6c");
+  deckGrad.addColorStop(0.3, "#b8885a");
+  deckGrad.addColorStop(0.7, "#a07848");
+  deckGrad.addColorStop(1, "#c49a6c");
+  ctx.fillStyle = deckGrad;
+  ctx.fillRect(0, -hw, len, width);
+
+  // Planks
+  ctx.strokeStyle = "rgba(80,50,20,0.25)";
   ctx.lineWidth = 1;
-  for (let x = 10; x < len; x += 15) {
+  for (let x = 8; x < len; x += 12) {
     ctx.beginPath();
-    ctx.moveTo(x, -width / 2);
-    ctx.lineTo(x, width / 2);
+    ctx.moveTo(x, -hw + railW);
+    ctx.lineTo(x, hw - railW);
     ctx.stroke();
   }
+
+  // Wood grain lines (horizontal)
+  ctx.strokeStyle = "rgba(60,35,10,0.08)";
+  ctx.lineWidth = 0.5;
+  for (let y = -hw + 4; y < hw; y += 5) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(len, y);
+    ctx.stroke();
+  }
+
+  // Railings — left and right
+  const railGrad = ctx.createLinearGradient(0, -hw, 0, -hw + railW);
+  railGrad.addColorStop(0, "#8b6b3d");
+  railGrad.addColorStop(1, "#6b4f2d");
+  ctx.fillStyle = railGrad;
+  ctx.fillRect(0, -hw, len, railW);
+  ctx.fillRect(0, hw - railW, len, railW);
+
+  // Railing posts
+  ctx.fillStyle = "#6b4f2d";
+  for (let x = 6; x < len; x += 20) {
+    ctx.fillRect(x - 2, -hw - 2, 4, railW + 4);
+    ctx.fillRect(x - 2, hw - railW - 2, 4, railW + 4);
+  }
+
+  // Highlight edge on top rail
+  ctx.strokeStyle = "rgba(255,220,160,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -hw + 1);
+  ctx.lineTo(len, -hw + 1);
+  ctx.stroke();
+
+  // Outer border
+  ctx.strokeStyle = "#5a3f20";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(0, -hw, len, width);
+
+  // Entry/exit arches
+  for (const xPos of [0, len]) {
+    ctx.fillStyle = "#6b4f2d";
+    ctx.beginPath();
+    ctx.arc(xPos, -hw - 2, 5, 0, Math.PI, true);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(xPos, hw + 2, 5, Math.PI, 0, true);
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 
