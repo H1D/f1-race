@@ -1,6 +1,6 @@
 # Boat Race
 
-Top-down 2D boat racing game set in the Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Features physics-driven boat handling with motor voltage ramp, world-space anisotropic drag, speed-dependent steering, and a live debug panel with 4 boat presets.
+Top-down 2D two-player boat racing game set in the Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with physics-driven handling: motor voltage ramp, world-space anisotropic drag, speed-dependent steering, dual-mode camera (follow/fixed), and a live debug panel with per-boat tuning.
 
 ## Stack
 

@@ -1,12 +1,14 @@
 # Decisions
 
 ```toon
-decisions[5]{id,date,title,status}:
+decisions[7]{id,date,title,status}:
   001,2026-04-02,Fixed timestep game loop,accepted
   002,2026-04-02,ECS-lite over class hierarchy,accepted
   003,2026-04-02,Anisotropic drag for boat physics,accepted
   004,2026-04-02,Bun as bundler and runtime,accepted
   005,2026-04-02,World-space velocity over local-space,accepted
+  006,2026-04-02,Two-player shared-screen with split controls,accepted
+  007,2026-04-02,Dual-mode camera (follow vs fixed),accepted
 ```
 
 ## ADR-001: Fixed timestep game loop
@@ -56,3 +58,23 @@ decisions[5]{id,date,title,status}:
 **Context**: Local-frame velocity (forward/lateral) doesn't create drift when the boat turns — momentum rotates with the heading. Ported from the boat branch which uses world-space velocity.
 **Decision**: Store velocity as world-space (vx, vy). Decompose to local frame each tick for anisotropic drag, then recompose to world.
 **Consequences**: Turning naturally creates drift — forward momentum becomes lateral when heading changes, then lateral drag kills it. Physics values port directly from the boat branch with no scaling.
+
+---
+
+## ADR-006: Two-player shared-screen with split controls
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: Game needs multiplayer. Options: online netcode, split-screen, or shared-screen.
+**Decision**: Two players on same screen — Player 1 uses WASD, Player 2 uses arrow keys. Input system returns `DualInput` with independent `InputState` per player. Physics/collision run independently per boat.
+**Consequences**: Simple to implement (no networking). Camera must frame both boats (fixed mode) or follow one (follow mode). Debug panel needs per-boat physics sections. `GameState.update()` takes `DualInput` instead of `InputState`.
+
+---
+
+## ADR-007: Dual-mode camera (follow vs fixed)
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: With two boats, a single follow camera can't show both players. Need a way to frame both or focus on one.
+**Decision**: Two camera modes — **Follow** (tracks one entity with look-ahead + rotation) and **Fixed** (centers on midpoint of all entities, dynamic zoom, no rotation). Toggled via debug panel. Smooth 500ms transition between modes.
+**Consequences**: Fixed mode is default for two-player gameplay. Follow mode available for spectating one player. Dynamic zoom keeps both boats in frame. Transition uses fast lerp (0.25) easing to normal (0.08) to avoid jarring snaps.

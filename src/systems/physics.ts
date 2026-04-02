@@ -15,8 +15,9 @@ export function updatePhysics(entity: Entity, input: InputState, dt: number): vo
   tf.prevAngle = tf.angle;
 
   // Motor voltage ramp (from idea.md motor & voltage mechanic)
-  motor.targetVoltage = input.throttle ? 1 : 0;
-  const rampRate = motor.targetVoltage > motor.voltage ? motor.rampUp : motor.rampDown;
+  // Reverse is slower: target -0.4 instead of 1
+  motor.targetVoltage = input.throttle ? 1 : input.reverse ? -0.4 : 0;
+  const rampRate = Math.abs(motor.targetVoltage) > Math.abs(motor.voltage) ? motor.rampUp : motor.rampDown;
   const vDiff = motor.targetVoltage - motor.voltage;
   motor.voltage += Math.sign(vDiff) * Math.min(rampRate * dt, Math.abs(vDiff));
 

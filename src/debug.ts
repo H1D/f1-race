@@ -1,4 +1,4 @@
-import type { BoatPhysicsComponent } from "./types";
+import type { BoatPhysicsComponent, CameraState, Entity } from "./types";
 
 interface Slider {
   key: keyof BoatPhysicsComponent;
@@ -77,7 +77,11 @@ const sliders: Slider[] = [
   { key: "maxSpeed", label: "Max Speed", min: 2, max: 40, step: 1 },
 ];
 
-export function createDebugMenu(params: BoatPhysicsComponent): HTMLElement {
+export function createDebugMenu(
+  boat1Physics: BoatPhysicsComponent,
+  camera?: CameraState,
+  boat2Physics?: BoatPhysicsComponent,
+): HTMLElement {
   const panel = document.createElement("div");
   panel.id = "debug-panel";
   panel.innerHTML = `
@@ -87,6 +91,7 @@ export function createDebugMenu(params: BoatPhysicsComponent): HTMLElement {
         background: rgba(0,0,0,0.8); color: #eee;
         padding: 12px 16px; border-radius: 8px;
         font: 12px/1.6 monospace; min-width: 240px;
+        max-height: 90vh; overflow-y: auto;
         user-select: none; z-index: 100;
       }
       #debug-panel h3 { margin: 0 0 8px; font-size: 13px; color: #f88; }
@@ -100,69 +105,136 @@ export function createDebugMenu(params: BoatPhysicsComponent): HTMLElement {
         padding: 6px 10px; border-radius: 6px; cursor: pointer;
         font: 12px monospace; z-index: 101;
       }
+      #debug-panel .boat-tab { opacity: 0.5; }
+      #debug-panel .boat-tab.active { opacity: 1; border-color: #8cf; }
     </style>
-    <h3>boat debug</h3>
   `;
 
-  function syncSliders() {
-    panel.querySelectorAll<HTMLInputElement>("input[type=range]").forEach((input, i) => {
-      input.value = String(params[sliders[i]!.key]);
-      (input.nextElementSibling as HTMLElement).textContent = input.value;
-    });
-  }
-
-  // Presets row
-  const presetRow = document.createElement("div");
-  presetRow.style.cssText = "display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;";
   const btnStyle = "background:#333;color:#eee;border:1px solid #555;padding:3px 8px;border-radius:4px;cursor:pointer;font:11px monospace;";
-  for (const preset of presets) {
-    const btn = document.createElement("button");
-    btn.textContent = preset.name;
-    btn.style.cssText = btnStyle;
-    btn.addEventListener("click", () => {
-      Object.assign(params, preset.params);
-      syncSliders();
-    });
-    presetRow.appendChild(btn);
+
+  // Camera mode toggle
+  if (camera) {
+    const camSection = document.createElement("div");
+    camSection.style.cssText = "margin-bottom:10px;";
+
+    const camLabel = document.createElement("h3");
+    camLabel.textContent = "camera";
+    camSection.appendChild(camLabel);
+
+    const camRow = document.createElement("div");
+    camRow.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
+
+    const modes: { label: string; apply: () => void }[] = [
+      {
+        label: "Fixed",
+        apply: () => {
+          camera.followTarget = null;
+        },
+      },
+      ...camera.entities.map((entity, i) => ({
+        label: `Follow P${i + 1}`,
+        apply: () => {
+          camera.followTarget = entity;
+        },
+      })),
+    ];
+
+    for (const mode of modes) {
+      const btn = document.createElement("button");
+      btn.textContent = mode.label;
+      btn.style.cssText = btnStyle;
+      btn.addEventListener("click", mode.apply);
+      camRow.appendChild(btn);
+    }
+
+    camSection.appendChild(camRow);
+    panel.appendChild(camSection);
   }
-  panel.appendChild(presetRow);
 
-  for (const s of sliders) {
-    const row = document.createElement("div");
-    row.className = "row";
-
-    const label = document.createElement("label");
-    label.textContent = s.label;
-
-    const input = document.createElement("input");
-    input.type = "range";
-    input.min = String(s.min);
-    input.max = String(s.max);
-    input.step = String(s.step);
-    input.value = String(params[s.key]);
-
-    const val = document.createElement("span");
-    val.className = "val";
-    val.textContent = String(params[s.key]);
-
-    input.addEventListener("input", () => {
-      params[s.key] = parseFloat(input.value);
-      val.textContent = input.value;
-    });
-
-    row.append(label, input, val);
-    panel.appendChild(row);
+  // Boat physics sections
+  const boats: { label: string; color: string; params: BoatPhysicsComponent }[] = [
+    { label: "boat 1 (WASD)", color: "#e04040", params: boat1Physics },
+  ];
+  if (boat2Physics) {
+    boats.push({ label: "boat 2 (Arrows)", color: "#e0c040", params: boat2Physics });
   }
 
-  // Reset button
-  const reset = document.createElement("button");
-  reset.textContent = "Reset";
-  reset.style.cssText = "margin-top:8px;background:#333;color:#eee;border:1px solid #555;padding:4px 12px;border-radius:4px;cursor:pointer;font:12px monospace;";
-  reset.addEventListener("click", () => {
-    Object.assign(params, yacht.params);
-    syncSliders();
-  });
-  panel.appendChild(reset);
+  for (const boat of boats) {
+    const section = document.createElement("div");
+    section.style.cssText = "border-top:1px solid #444;padding-top:8px;margin-top:8px;";
+
+    const header = document.createElement("h3");
+    header.textContent = boat.label;
+    header.style.color = boat.color;
+    section.appendChild(header);
+
+    // Presets
+    const presetRow = document.createElement("div");
+    presetRow.style.cssText = "display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;";
+
+    const sliderInputs: HTMLInputElement[] = [];
+
+    function syncBoatSliders() {
+      for (let i = 0; i < sliderInputs.length; i++) {
+        const input = sliderInputs[i]!;
+        input.value = String(boat.params[sliders[i]!.key]);
+        (input.nextElementSibling as HTMLElement).textContent = input.value;
+      }
+    }
+
+    for (const preset of presets) {
+      const btn = document.createElement("button");
+      btn.textContent = preset.name;
+      btn.style.cssText = btnStyle;
+      btn.addEventListener("click", () => {
+        Object.assign(boat.params, preset.params);
+        syncBoatSliders();
+      });
+      presetRow.appendChild(btn);
+    }
+    section.appendChild(presetRow);
+
+    // Sliders
+    for (const s of sliders) {
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const label = document.createElement("label");
+      label.textContent = s.label;
+
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = String(s.min);
+      input.max = String(s.max);
+      input.step = String(s.step);
+      input.value = String(boat.params[s.key]);
+
+      const val = document.createElement("span");
+      val.className = "val";
+      val.textContent = String(boat.params[s.key]);
+
+      input.addEventListener("input", () => {
+        boat.params[s.key] = parseFloat(input.value);
+        val.textContent = input.value;
+      });
+
+      sliderInputs.push(input);
+      row.append(label, input, val);
+      section.appendChild(row);
+    }
+
+    // Reset
+    const reset = document.createElement("button");
+    reset.textContent = "Reset";
+    reset.style.cssText = "margin-top:6px;" + btnStyle;
+    reset.addEventListener("click", () => {
+      Object.assign(boat.params, yacht.params);
+      syncBoatSliders();
+    });
+    section.appendChild(reset);
+
+    panel.appendChild(section);
+  }
 
   // Toggle visibility with backtick key
   let visible = false;

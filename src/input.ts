@@ -3,8 +3,30 @@ import type { InputState } from "./types";
 const STEER_ACCEL = 6.0; // how fast steering builds toward ±1
 const STEER_DECAY = 8.0; // how fast it returns to center
 
+function createInputState(): InputState {
+  return { left: false, right: false, throttle: false, reverse: false, steeringAccum: 0 };
+}
+
+function updateSteering(state: InputState, dt: number): void {
+  const dir = (state.left ? -1 : 0) + (state.right ? 1 : 0);
+  if (dir !== 0) {
+    state.steeringAccum = Math.max(
+      -1,
+      Math.min(1, state.steeringAccum + dir * STEER_ACCEL * dt),
+    );
+  } else {
+    const decay = STEER_DECAY * dt;
+    if (Math.abs(state.steeringAccum) < decay) {
+      state.steeringAccum = 0;
+    } else {
+      state.steeringAccum -= Math.sign(state.steeringAccum) * decay;
+    }
+  }
+}
+
 export function createInputSystem(): {
-  state: InputState;
+  player1: InputState;
+  player2: InputState;
   update(dt: number): void;
   destroy(): void;
 } {
@@ -19,35 +41,27 @@ export function createInputSystem(): {
   window.addEventListener("keydown", onDown);
   window.addEventListener("keyup", onUp);
 
-  const state: InputState = {
-    left: false,
-    right: false,
-    throttle: false,
-    steeringAccum: 0,
-  };
+  const player1 = createInputState();
+  const player2 = createInputState();
 
   return {
-    state,
+    player1,
+    player2,
 
     update(dt: number) {
-      state.left = keys.has("ArrowLeft") || keys.has("KeyA");
-      state.right = keys.has("ArrowRight") || keys.has("KeyD");
-      state.throttle = keys.has("ArrowUp") || keys.has("KeyW") || keys.has("Space");
+      // Player 1: WASD
+      player1.left = keys.has("KeyA");
+      player1.right = keys.has("KeyD");
+      player1.throttle = keys.has("KeyW");
+      player1.reverse = keys.has("KeyS");
+      updateSteering(player1, dt);
 
-      const dir = (state.left ? -1 : 0) + (state.right ? 1 : 0);
-      if (dir !== 0) {
-        state.steeringAccum = Math.max(
-          -1,
-          Math.min(1, state.steeringAccum + dir * STEER_ACCEL * dt),
-        );
-      } else {
-        const decay = STEER_DECAY * dt;
-        if (Math.abs(state.steeringAccum) < decay) {
-          state.steeringAccum = 0;
-        } else {
-          state.steeringAccum -= Math.sign(state.steeringAccum) * decay;
-        }
-      }
+      // Player 2: Arrow keys
+      player2.left = keys.has("ArrowLeft");
+      player2.right = keys.has("ArrowRight");
+      player2.throttle = keys.has("ArrowUp");
+      player2.reverse = keys.has("ArrowDown");
+      updateSteering(player2, dt);
     },
 
     destroy() {

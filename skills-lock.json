@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "auto-docs": {
+      "source": "H1D/auto-docs",
+      "sourceType": "github",
+      "computedHash": "47fef9521273015374cf84c5a0b124fee40af892c70dc814148b0606ca106520"
+    }
+  }
+}

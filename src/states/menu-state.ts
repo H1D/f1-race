@@ -1,4 +1,4 @@
-import type { GameContext, GameState, InputState } from "../types";
+import type { DualInput, GameContext, GameState } from "../types";
 import { RacingState } from "./racing-state";
 
 export class MenuState implements GameState {
@@ -12,10 +12,11 @@ export class MenuState implements GameState {
 
   exit() {}
 
-  update(_dt: number, input: InputState) {
-    // Wait for space to be released first (avoid instant skip)
-    if (!input.throttle) this.spaceWasUp = true;
-    if (this.spaceWasUp && input.throttle) {
+  update(_dt: number, input: DualInput) {
+    // Wait for throttle to be released first (avoid instant skip)
+    const anyThrottle = input.player1.throttle || input.player2.throttle;
+    if (!anyThrottle) this.spaceWasUp = true;
+    if (this.spaceWasUp && anyThrottle) {
       this.gameCtx.switchState(new RacingState());
     }
   }
@@ -36,10 +37,10 @@ export class MenuState implements GameState {
 
     ctx.font = "20px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.fillText("Press SPACE to race", w / 2, h / 2 + 30);
+    ctx.fillText("Press W or UP to race", w / 2, h / 2 + 30);
 
     ctx.font = "14px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.fillText("← → steer  ·  SPACE / ↑ throttle", w / 2, h / 2 + 70);
+    ctx.fillText("P1: WASD  ·  P2: Arrow keys", w / 2, h / 2 + 70);
   }
 }
