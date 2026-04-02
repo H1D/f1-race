@@ -1,9 +1,9 @@
 import type {
   CameraState,
+  DualInput,
   Entity,
   GameContext,
   GameState,
-  InputState,
   TrackBounds,
 } from "../types";
 import { createBoatEntity } from "../entity";
@@ -17,23 +17,39 @@ import { createDebugMenu } from "../debug";
 
 export class RacingState implements GameState {
   private gameCtx!: GameContext;
-  private player!: Entity;
+  private player1!: Entity;
+  private player2!: Entity;
   private track!: TrackBounds;
   private camera!: CameraState;
   private debugPanel: HTMLElement | null = null;
+  private lastDt = 1 / 60;
 
   enter(ctx: GameContext) {
     this.gameCtx = ctx;
     this.track = createPlaceholderTrack();
-    this.player = createBoatEntity(this.track.startX, this.track.startY, this.track.startAngle);
+
+    // Boat 1 (WASD) — red
+    this.player1 = createBoatEntity(this.track.startX, this.track.startY, this.track.startAngle);
+
+    // Boat 2 (Arrows) — offset and blue
+    this.player2 = createBoatEntity(this.track.startX, this.track.startY + 50, this.track.startAngle);
+    if (this.player2.render) {
+      this.player2.render.color = "#e0c040";
+    }
+
     this.camera = {
       x: this.track.startX,
       y: this.track.startY,
-      angle: this.track.startAngle,
+      angle: 0,
       zoom: 1.4,
+      followTarget: null,
+      entities: [this.player1, this.player2],
+      _prevTarget: null,
+      _transitionElapsed: 999,
     };
-    if (this.player.boatPhysics) {
-      this.debugPanel = createDebugMenu(this.player.boatPhysics);
+
+    if (this.player1.boatPhysics) {
+      this.debugPanel = createDebugMenu(this.player1.boatPhysics, this.camera, this.player2.boatPhysics ?? undefined);
     }
   }
 
@@ -42,9 +58,12 @@ export class RacingState implements GameState {
     document.getElementById("debug-toggle")?.remove();
   }
 
-  update(dt: number, input: InputState) {
-    updatePhysics(this.player, input, dt);
-    resolveCollisions(this.player, this.track);
+  update(dt: number, input: DualInput) {
+    this.lastDt = dt;
+    updatePhysics(this.player1, input.player1, dt);
+    updatePhysics(this.player2, input.player2, dt);
+    resolveCollisions(this.player1, this.track);
+    resolveCollisions(this.player2, this.track);
   }
 
   render(ctx: CanvasRenderingContext2D, alpha: number) {
@@ -56,12 +75,13 @@ export class RacingState implements GameState {
     ctx.fillRect(0, 0, w, h);
 
     // Camera
-    updateCamera(this.camera, this.player, alpha);
+    updateCamera(this.camera, w, h, this.lastDt);
     applyCameraTransform(ctx, this.camera, w, h);
 
     // World
     renderBackground(ctx, this.track);
-    renderBoat(ctx, this.player, alpha);
+    renderBoat(ctx, this.player1, alpha);
+    renderBoat(ctx, this.player2, alpha);
 
     // Restore to screen space
     ctx.restore();
@@ -71,16 +91,19 @@ export class RacingState implements GameState {
   }
 
   private renderHUD(ctx: CanvasRenderingContext2D, w: number) {
-    const vel = this.player.velocity;
-    const speed = Math.sqrt(vel.x ** 2 + vel.y ** 2);
-    const motor = this.player.motor;
-
     ctx.font = "14px monospace";
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.textAlign = "right";
-    ctx.fillText(`speed: ${speed.toFixed(0)}`, w - 20, 30);
-    if (motor) {
-      ctx.fillText(`motor: ${(motor.voltage * 100).toFixed(0)}%`, w - 20, 50);
-    }
+
+    // Player 1 stats
+    const vel1 = this.player1.velocity;
+    const speed1 = Math.sqrt(vel1.x ** 2 + vel1.y ** 2);
+    ctx.fillStyle = "rgba(224,64,64,0.7)";
+    ctx.fillText(`P1 speed: ${speed1.toFixed(0)}`, w - 20, 30);
+
+    // Player 2 stats
+    const vel2 = this.player2.velocity;
+    const speed2 = Math.sqrt(vel2.x ** 2 + vel2.y ** 2);
+    ctx.fillStyle = "rgba(224,192,64,0.7)";
+    ctx.fillText(`P2 speed: ${speed2.toFixed(0)}`, w - 20, 50);
   }
 }

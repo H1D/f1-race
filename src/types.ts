@@ -58,14 +58,21 @@ export interface InputState {
   left: boolean;
   right: boolean;
   throttle: boolean;
+  reverse: boolean;
   steeringAccum: number; // -1..1 smoothed
+}
+
+// === Dual-player input ===
+export interface DualInput {
+  player1: InputState;
+  player2: InputState;
 }
 
 // === Game state lifecycle ===
 export interface GameState {
   enter(ctx: GameContext): void;
   exit(): void;
-  update(dt: number, input: InputState): void;
+  update(dt: number, input: DualInput): void;
   render(ctx: CanvasRenderingContext2D, alpha: number): void;
 }
 
@@ -74,7 +81,7 @@ export interface GameContext {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   switchState: (state: GameState) => void;
-  input: InputState;
+  input: DualInput;
 }
 
 // === Camera state ===
@@ -83,6 +90,10 @@ export interface CameraState {
   y: number;
   angle: number;
   zoom: number;
+  followTarget: Entity | null; // null = fixed mode (default), set = follow mode
+  entities: Entity[]; // all boats — used for framing in fixed mode
+  _prevTarget: Entity | null; // internal: previous followTarget for detecting switches
+  _transitionElapsed: number; // internal: ms elapsed since last mode switch
 }
 
 // === Track boundary ===

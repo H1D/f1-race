@@ -1,4 +1,4 @@
-import type { GameContext, GameState, InputState } from "./types";
+import type { DualInput, GameContext, GameState } from "./types";
 
 export function createStateManager(gameCtx: GameContext) {
   let current: GameState | null = null;
@@ -10,7 +10,7 @@ export function createStateManager(gameCtx: GameContext) {
       current.enter(gameCtx);
     },
 
-    update(dt: number, input: InputState) {
+    update(dt: number, input: DualInput) {
       current?.update(dt, input);
     },
 
