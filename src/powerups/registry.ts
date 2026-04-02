@@ -6,6 +6,7 @@ import { canalLock } from "./definitions/canal-lock";
 import { draftShield } from "./definitions/draft-shield";
 import { bicycleDrop } from "./definitions/bicycle-drop";
 import { mainCharacterSyndrome } from "./definitions/main-character-syndrome";
+import { kingsdayInvasion } from "./definitions/kingsday-invasion";
 
 const POWERUP_REGISTRY: Map<string, PowerupDefinition> = new Map();
 
@@ -23,6 +24,7 @@ register(draftShield);
 // Attribute-only pickups (rarity 0 — never water-spawned, only from map attributes)
 register(bicycleDrop);
 register(mainCharacterSyndrome);
+register(kingsdayInvasion);
 
 // Zone effect definitions (not spawnable pickups — applied by zone entities)
 register(oilSlickZone);

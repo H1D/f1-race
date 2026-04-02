@@ -9,6 +9,7 @@ const ATTRIBUTE_POWERUP_MAP: Partial<Record<AttributeType, string>> = {
   "albert-heijn":  "herring-boost",
   "bike-shop":     "bicycle-drop",
   "effendi":       "main-character-syndrome",
+  "kingsday":      "kingsday-invasion",
 };
 
 export interface AttributePickupState {

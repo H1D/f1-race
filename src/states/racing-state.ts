@@ -473,6 +473,16 @@ export class RacingState implements GameState {
       intensity: 1,
     });
 
+    // Tourist boats: integrate drift velocity (they have no boatPhysics so updatePhysics skips them)
+    for (const obs of this.entityManager.getByTag("tourist-boat")) {
+      if (obs.markedForRemoval) continue;
+      const tf = obs.transform;
+      tf.prevPos.x = tf.pos.x;
+      tf.prevPos.y = tf.pos.y;
+      tf.pos.x += obs.velocity.x * dt;
+      tf.pos.y += obs.velocity.y * dt;
+    }
+
     // Boat-vs-obstacle collision (e.g. canal lock barrier)
     for (const obs of this.entityManager.getByTag("obstacle")) {
       if (obs.markedForRemoval) continue;

@@ -27,6 +27,7 @@ const ATTR_LABELS: Record<string, string> = {
   effendi: "EF",
   "herring-kiosk": "HK",
   "bike-shop": "BS",
+  kingsday: "KD",
 };
 
 const FLAG_POLE_HEIGHT = 32;

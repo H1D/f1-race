@@ -146,11 +146,70 @@ export function renderObstacles(
     ctx.rotate(angle);
     ctx.globalAlpha = fadeMul;
 
-    ctx.fillStyle = r.color;
-    ctx.fillRect(-r.width / 2, -r.height / 2, r.width, r.height);
+    if (entity.tags.has("tourist-boat")) {
+      drawTouristBoat(ctx, r.width, r.height);
+    } else {
+      ctx.fillStyle = r.color;
+      ctx.fillRect(-r.width / 2, -r.height / 2, r.width, r.height);
+    }
 
     ctx.restore();
   }
+}
+
+/**
+ * Draw a top-down Amsterdam canal tourist boat (orange hull, orange crowd,
+ * Dutch flag tricolor stripe at the bow).
+ */
+function drawTouristBoat(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const hw = w / 2;
+  const hh = h / 2;
+
+  // Hull — rounded rectangle with pointed bow (right side)
+  ctx.beginPath();
+  ctx.moveTo(-hw, -hh * 0.7);
+  ctx.lineTo( hw * 0.55, -hh * 0.7);
+  ctx.lineTo( hw, 0);            // pointed bow tip
+  ctx.lineTo( hw * 0.55,  hh * 0.7);
+  ctx.lineTo(-hw,  hh * 0.7);
+  ctx.quadraticCurveTo(-hw * 1.08, 0, -hw, -hh * 0.7); // rounded stern
+  ctx.closePath();
+  ctx.fillStyle = "#c05010";
+  ctx.fill();
+
+  // Deck interior (lighter orange — the crowd)
+  ctx.beginPath();
+  ctx.moveTo(-hw * 0.7, -hh * 0.45);
+  ctx.lineTo( hw * 0.40, -hh * 0.45);
+  ctx.lineTo( hw * 0.72, 0);
+  ctx.lineTo( hw * 0.40,  hh * 0.45);
+  ctx.lineTo(-hw * 0.7,  hh * 0.45);
+  ctx.closePath();
+  ctx.fillStyle = "#ff9900";
+  ctx.fill();
+
+  // Dutch flag stripe at bow (3 thin horizontal bands)
+  const flagX = hw * 0.28;
+  const flagW = hw * 0.38;
+  const strH  = hh * 0.22;
+  const flagY = -strH * 1.5;
+
+  ctx.fillStyle = "#ae1c28"; ctx.fillRect(flagX, flagY,            flagW, strH);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(flagX, flagY + strH,     flagW, strH);
+  ctx.fillStyle = "#21468b"; ctx.fillRect(flagX, flagY + strH * 2, flagW, strH);
+
+  // Hull outline
+  ctx.beginPath();
+  ctx.moveTo(-hw, -hh * 0.7);
+  ctx.lineTo( hw * 0.55, -hh * 0.7);
+  ctx.lineTo( hw, 0);
+  ctx.lineTo( hw * 0.55,  hh * 0.7);
+  ctx.lineTo(-hw,  hh * 0.7);
+  ctx.quadraticCurveTo(-hw * 1.08, 0, -hw, -hh * 0.7);
+  ctx.closePath();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
 }
 
 function hexToRgba(hex: string, a: number): string {

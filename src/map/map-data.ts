@@ -45,6 +45,8 @@ export function createDefaultMap(): MapData {
       // Island (inside island)
       { id: 3, type: "herring-kiosk", position: { x: 400, y: -300 } },
       { id: 4, type: "bike-shop", position: { x: -200, y: 100 } },
+      // On the island — near the south bend
+      { id: 5, type: "kingsday", position: { x: 300, y: 300 } },
     ],
     bridges: [
       // Across the straight
