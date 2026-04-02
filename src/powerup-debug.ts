@@ -1,6 +1,7 @@
 import type {
   Entity,
   FloodState,
+  MapData,
   PowerupDefinition,
   SpawnManagerState,
 } from "./types";
@@ -12,7 +13,8 @@ export interface PowerupDebugContext {
   spawnState: SpawnManagerState;
   floodState: FloodState;
   powerupDefs: Map<string, PowerupDefinition>;
-  entityManager: { entities: Entity[] };
+  entityManager: { entities: Entity[]; addMany(entities: Entity[]): void };
+  map: MapData;
   gameLog: GameLog;
 }
 
@@ -140,7 +142,7 @@ export function createPowerupDebugSection(ctx: PowerupDebugContext): HTMLElement
     applyBtn.textContent = `Apply ${def.visual?.hudIcon ?? "?"} ${def.name}`;
     applyBtn.style.marginTop = "6px";
     applyBtn.addEventListener("click", () => {
-      applyEffectToPlayer(ctx.player, def);
+      applyEffectToPlayer(ctx.player, def, ctx.map, ctx.entityManager);
     });
     content.appendChild(applyBtn);
 
@@ -279,7 +281,12 @@ export function createPowerupDebugSection(ctx: PowerupDebugContext): HTMLElement
   return wrapper;
 }
 
-function applyEffectToPlayer(player: Entity, def: PowerupDefinition): void {
+function applyEffectToPlayer(
+  player: Entity,
+  def: PowerupDefinition,
+  map: MapData,
+  entityManager: { addMany(entities: Entity[]): void },
+): void {
   if (!player.activeEffects) {
     player.activeEffects = { effects: [] };
   }
@@ -319,6 +326,11 @@ function applyEffectToPlayer(player: Entity, def: PowerupDefinition): void {
     sourceEntityId: player.id,
     state,
   });
+
+  if (def.effect.onSpawn) {
+    const spawned = def.effect.onSpawn(player, map);
+    if (spawned.length > 0) entityManager.addMany(spawned);
+  }
 }
 
 function createSliderRow(

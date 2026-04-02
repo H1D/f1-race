@@ -87,6 +87,56 @@ const BOAT_RADIUS = 20; // collision radius (~half of 64×32 boat)
 const BOAT_BOUNCE = 0.6; // how much velocity is reflected on boat-boat hit
 const BOAT_SPIN = 0.08; // angular impulse from off-center hits
 
+/**
+ * Resolve collision between a boat and a barrier obstacle.
+ * Treats the obstacle as a line segment (center + angle + half-length = collider.radius).
+ * Pushes the boat away from the nearest point on the segment.
+ */
+export function resolveBoatObstacleCollision(boat: Entity, obstacle: Entity): boolean {
+  const halfLen = obstacle.collider?.radius ?? 0;
+  if (halfLen === 0) return false;
+
+  const ox = obstacle.transform.pos.x;
+  const oy = obstacle.transform.pos.y;
+  const angle = obstacle.transform.angle;
+
+  const ax = ox - Math.cos(angle) * halfLen;
+  const ay = oy - Math.sin(angle) * halfLen;
+  const bx = ox + Math.cos(angle) * halfLen;
+  const by = oy + Math.sin(angle) * halfLen;
+
+  const px = boat.transform.pos.x;
+  const py = boat.transform.pos.y;
+
+  // Closest point on segment [a,b] to boat center
+  const segDx = bx - ax;
+  const segDy = by - ay;
+  const segLenSq = segDx * segDx + segDy * segDy;
+  const t = segLenSq > 0
+    ? Math.max(0, Math.min(1, ((px - ax) * segDx + (py - ay) * segDy) / segLenSq))
+    : 0;
+
+  const cx = ax + t * segDx;
+  const cy = ay + t * segDy;
+
+  const dx = px - cx;
+  const dy = py - cy;
+  const distSq = dx * dx + dy * dy;
+
+  if (distSq >= BOAT_RADIUS * BOAT_RADIUS || distSq === 0) return false;
+
+  const dist = Math.sqrt(distSq);
+  const nx = dx / dist;
+  const ny = dy / dist;
+
+  const penetration = BOAT_RADIUS - dist;
+  boat.transform.pos.x += nx * (penetration + 1);
+  boat.transform.pos.y += ny * (penetration + 1);
+  wallResponse(boat.velocity, nx, ny);
+
+  return true;
+}
+
 /** Resolve collision between two boats, applying forces to both */
 export function resolveBoatCollision(a: Entity, b: Entity): boolean {
   const dx = b.transform.pos.x - a.transform.pos.x;

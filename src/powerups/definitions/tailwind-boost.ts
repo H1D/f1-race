@@ -1,4 +1,5 @@
 import type { PowerupDefinition } from "../../types";
+import { drawHerringIcon } from "../../systems/powerup-icons";
 
 export const herringBoost: PowerupDefinition = {
   id: "herring-boost",
@@ -37,6 +38,7 @@ export const herringBoost: PowerupDefinition = {
     trailEffect: "speed-lines",
     boatTint: "#22ee77",
     hudIcon: "🐟",
+    drawIcon: drawHerringIcon,
   },
 
   tunables: {

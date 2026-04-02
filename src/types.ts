@@ -250,6 +250,7 @@ export interface PowerupDefinition {
     trailEffect?: string;
     boatTint?: string;
     hudIcon: string;
+    drawIcon?: (ctx: CanvasRenderingContext2D, size: number) => void;
   };
 
   /** Optional named numeric knobs exposed in the debug panel. */

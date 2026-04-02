@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Boat Race
 
-Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (P1 WASD, P2 Arrows) with physics-driven handling on user-editable polygon river tracks, world-space anisotropic drag, motor voltage ramp, dual-mode camera, pooled particle effects, a data-driven powerup system with lifecycle hooks, event logging, in-game map editor, and collapsible live debug panels.
+Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (P1 WASD, P2 Arrows) with physics-driven handling on user-editable polygon river tracks, world-space anisotropic drag, motor voltage ramp, dual-mode camera, pooled particle effects, a data-driven powerup system with lifecycle hooks, event logging, in-game map editor, collapsible live debug panels, and a procedural sound system (Web Audio API — no audio files).
 
 ## Commands
 
@@ -29,7 +29,9 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | entity | `src/entity.ts` | Entity factories (boat/pickup/obstacle/zone) + ID counter |
 | entity-manager | `src/entity-manager.ts` | Entity list with tag/component queries + cleanup |
 | physics | `src/systems/physics.ts` | World-space decompose/recompose + anisotropic drag + motor ramp |
-| collision | `src/systems/collision.ts` | Polygon boundary + wall response + boat-to-boat collision with impulse |
+| collision | `src/systems/collision.ts` | Polygon boundary + wall response + boat-to-boat collision with impulse; optional `CollisionResult` out-param |
+| sound-system | `src/sound/sound.ts` | SoundSystem factory + `playSound`/`startContinuous`/`updateContinuous`/`stopContinuous` API |
+| synth | `src/sound/synth.ts` | Web Audio primitives — white/pink/brown noise buffers + ADSR envelopes + osc/filter/noise builders |
 | camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
 | boat-render | `src/systems/boat-render.ts` | boat.png sprite with interpolation + procedural fallback |
 | map-renderer | `src/map/map-renderer.ts` | Polygon map rendering — land + water + grid + walls + bridges + attributes |
@@ -74,10 +76,15 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Data-driven powerups**: PowerupDefinition registry with onApply/onTick/onExpire hooks + optional `tunables` for debug-panel knobs
 - **Multiplier-based effect reversal**: Effects store multipliers, divide on expire — order-independent
 - **Orchestrator logging**: Systems stay pure, RacingState observes outputs and logs events
+- **Procedural audio**: No audio files — all sounds synthesized at runtime via Web Audio API. `SoundDefinition` objects describe oscillator/noise/filter recipes analogous to `PowerupDefinition`
+- **Lazy AudioContext**: Created inside a `keydown` handler (not at startup) to satisfy Chrome autoplay policy — all sound calls are no-ops before `initAudio()`
 
 ## Key Rules
 
-- No runtime dependencies — pure vanilla TS + Canvas 2D
+- No npm runtime dependencies — pure vanilla TS + Canvas 2D + Web Audio API (browser built-in)
+- Sound definitions live in `src/sound/definitions/` — export data only, no side effects
+- `SoundSystem` must be initialized via `initAudio()` before any sound plays; safe to call `playSound`/`startContinuous` before init (no-ops)
+- Web Audio: always call `start()` before `stop()` on `AudioScheduledSourceNode` — violating this throws `InvalidStateError`
 - Entities are plain objects with optional `?` components — never add methods to entities
 - Systems are pure functions in `src/systems/` — they take entities + input, mutate in place
 - Velocity is world-space (`vel.x`, `vel.y`) — NOT local frame. Physics decomposes/recomposes each tick
@@ -116,6 +123,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Debug | active | `src/debug.ts`, `src/powerup-debug.ts` |
 | Game Log | active | `src/game-log.ts`, `src/powerup-debug.ts` |
 | Particles | active | `src/systems/particles.ts` |
+| Sound | active | `src/sound/sound.ts`, `src/sound/synth.ts`, `src/sound/definitions/` — procedural Web Audio synthesis, 10 sounds, lazy init |
 
 ## Project Structure
 
@@ -129,5 +137,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | `src/editor/` | In-game map editor (state, toolbar) |
 | `src/powerups/` | Powerup registry + definitions |
 | `src/powerups/definitions/` | Individual powerup type definitions |
+| `src/sound/` | Procedural sound system (SoundSystem factory + Web Audio API) |
+| `src/sound/definitions/` | Individual sound type definitions (engine, collision, pickup, flood, ambient, penalty) |
 | `public/` | Static HTML |
 | `dist/` | Build output |

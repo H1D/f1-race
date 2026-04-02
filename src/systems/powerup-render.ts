@@ -12,6 +12,7 @@ export function renderPickups(
   pickups: Entity[],
   alpha: number,
   time: number,
+  definitions?: Map<string, PowerupDefinition>,
 ): void {
   for (const entity of pickups) {
     const pickup = entity.powerupPickup;
@@ -53,6 +54,16 @@ export function renderPickups(
     ctx.lineWidth = 1.5;
     ctx.globalAlpha = 0.8;
     ctx.stroke();
+
+    // Canvas icon centered in the orb
+    const def = definitions?.get(pickup.powerupId);
+    if (def?.visual?.drawIcon) {
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = 0.8;
+      def.visual.drawIcon(ctx, pickup.radius * 1.3);
+    }
 
     ctx.restore();
   }
@@ -340,8 +351,17 @@ export function renderEffectsHUD(
     ctx.globalAlpha = 0.5;
     ctx.strokeRect(ix, iy, size, size);
 
-    // HUD icon text (centered in the square)
-    if (def?.visual?.hudIcon) {
+    // HUD icon — canvas-drawn if available, emoji fallback otherwise
+    if (def?.visual?.drawIcon) {
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 0.8;
+      ctx.save();
+      ctx.translate(ix + size / 2, iy + size / 2);
+      def.visual.drawIcon(ctx, size * 0.78);
+      ctx.restore();
+    } else if (def?.visual?.hudIcon) {
       ctx.globalAlpha = 1;
       ctx.font = "14px monospace";
       ctx.fillStyle = "#ffffff";

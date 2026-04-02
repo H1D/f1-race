@@ -228,6 +228,7 @@ export function createDebugMenu(
   const { wrapper: boatPanel, body: boatBody } = createCollapsiblePanel(
     "BOAT",
     "#f88",
+    false,
   );
 
   // Camera mode toggle (from upstream camera feature)

@@ -1,4 +1,5 @@
 import type { PowerupDefinition } from "../../types";
+import { drawOilSpillIcon } from "../../systems/powerup-icons";
 import { createZoneEntity } from "../../entity";
 
 /** Zone effect applied to boats caught in the oil slick. */
@@ -78,5 +79,6 @@ export const oilSlick: PowerupDefinition = {
 
   visual: {
     hudIcon: "🫧",
+    drawIcon: drawOilSpillIcon,
   },
 };

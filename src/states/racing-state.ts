@@ -21,6 +21,7 @@ import { updatePhysics } from "../systems/physics";
 import {
   resolveMapCollisions,
   resolveBoatCollision,
+  resolveBoatObstacleCollision,
 } from "../systems/collision";
 import { segmentsCross } from "../map/geometry";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
@@ -225,6 +226,7 @@ export class RacingState implements GameState {
       floodState: this.floodState,
       powerupDefs: this.powerupDefs,
       entityManager: this.entityManager,
+      map: this.map,
       gameLog: this.gameLog,
     });
     this.debugPanel?.appendChild(this.powerupDebugPanel);
@@ -396,6 +398,13 @@ export class RacingState implements GameState {
       maxSpeed: this.player1.boatPhysics?.maxSpeed ?? 10,
       intensity: 1,
     });
+
+    // Boat-vs-obstacle collision (e.g. canal lock barrier)
+    for (const obs of this.entityManager.getByTag("obstacle")) {
+      if (obs.markedForRemoval) continue;
+      resolveBoatObstacleCollision(this.player1, obs);
+      resolveBoatObstacleCollision(this.player2, obs);
+    }
 
     // Boat-to-boat collision
     const boatHit = resolveBoatCollision(this.player1, this.player2);
@@ -599,7 +608,7 @@ export class RacingState implements GameState {
     // Pickups
     this.elapsedTime += 1 / 60;
     const pickups = this.entityManager.getWithComponent("powerupPickup");
-    renderPickups(ctx, pickups, alpha, this.elapsedTime);
+    renderPickups(ctx, pickups, alpha, this.elapsedTime, this.powerupDefs);
 
     // Obstacles
     const obstacles = this.entityManager.getByTag("obstacle");

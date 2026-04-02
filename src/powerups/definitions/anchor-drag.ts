@@ -1,4 +1,5 @@
 import type { PowerupDefinition } from "../../types";
+import { drawBicycleIcon } from "../../systems/powerup-icons";
 
 export const anchorDrag: PowerupDefinition = {
   id: "anchor-drag",
@@ -49,6 +50,7 @@ export const anchorDrag: PowerupDefinition = {
     trailEffect: "drag-bubbles",
     boatTint: "#ee3344",
     hudIcon: "⚓",
+    drawIcon: drawBicycleIcon,
   },
 
   tunables: {

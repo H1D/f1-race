@@ -3,7 +3,7 @@
 ## Component Map
 
 ```toon
-components[30]{name,type,path,responsibility}:
+components[32]{name,type,path,responsibility}:
   main,bootstrap,src/main.ts,canvas setup + wires dual-player input/state/loop
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
@@ -15,7 +15,9 @@ components[30]{name,type,path,responsibility}:
   editor-state,state,src/editor/editor-state.ts,map editor — draw/edit river outline + place attributes + bridges
   editor-toolbar,ui,src/editor/toolbar.ts,HTML toolbar with mode tabs and action buttons
   physics,system,src/systems/physics.ts,world-space velocity decompose/recompose + anisotropic drag + motor ramp
-  collision,system,src/systems/collision.ts,polygon boundary + wall response + boat-to-boat collision with impulse
+  collision,system,src/systems/collision.ts,polygon boundary + wall response + boat-to-boat collision with impulse + optional CollisionResult out-param for sound triggers
+  sound-system,system,src/sound/sound.ts,SoundSystem factory + play/start/update/stop/cleanup API — lazy AudioContext init on first keypress
+  synth,util,src/sound/synth.ts,Web Audio primitives — white/pink/brown noise buffers + ADSR envelope scheduling + osc/filter/noise builders
   flooding,system,src/systems/flooding.ts,"periodic flood cycle (20s/5s), penalty system, settings panel, flood overlay"
   camera,system,src/systems/camera.ts,follow camera with look-ahead + rotation
   boat-render,system,src/systems/boat-render.ts,boat.png sprite with interpolation + procedural fallback
@@ -63,6 +65,8 @@ components[30]{name,type,path,responsibility}:
 - **Data-driven powerups**: `PowerupDefinition` registry with `onApply/onTick/onExpire` lifecycle hooks + optional `tunables` record — adding a powerup = one definition file
 - **Multiplier-based effect cleanup**: Effects store multipliers, not snapshots — divide on expire for order-independent reversal
 - **Orchestrator-level event logging**: Systems stay pure, `RacingState` observes outputs and logs events (set-diff for expirations)
+- **Procedural audio**: No audio files — all sounds synthesized at runtime via Web Audio API. `SoundDefinition` data objects describe oscillator/noise/filter recipes; `RacingState` calls `playSound`/`updateContinuous` based on game events
+- **Lazy AudioContext**: Web Audio `AudioContext` created inside a `keydown` handler (not at startup) to satisfy Chrome autoplay policy; all sound calls are no-ops before init
 
 ## Boundaries
 

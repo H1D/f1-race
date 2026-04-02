@@ -30,6 +30,17 @@ files[5]{path,purpose}:
 - Speed HUD: P1 speed (red) + P2 speed (yellow), top-right
 - "Editor" button (top-left) switches to `EditorState`
 
+## Sound Integration
+
+`RacingState` owns the `SoundSystem` instance and drives all audio:
+- Engine hum + water ambient are continuous sounds started inside the first-keypress `AudioContext` init handler
+- `resolveMapCollisions()` receives a reusable `CollisionResult` out-param — `result.collided` triggers `wall-collision` oneshot
+- `resolveBoatCollision()` return value triggers `boat-collision` oneshot
+- Pickup events → `pickup`, expired effects → `expire`, penalty rising-edge → `penalty`
+- Flood state transitions trigger `flood-start`/`flood-end`; countdown ≤5s fires `flood-warning` each new second
+- `updateSound(dt)` called at end of each update tick for voice cleanup
+- `destroySound()` called in `exit()` — closes AudioContext and removes the keydown listener
+
 ## Gotchas
 
 - `applyCameraTransform` calls `ctx.save()` — matching `ctx.restore()` in `RacingState.render()`

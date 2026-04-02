@@ -1,4 +1,5 @@
 import type { PowerupDefinition } from "../../types";
+import { drawCanalLockIcon } from "../../systems/powerup-icons";
 import { createBridgeBarrierEntity } from "../../entity";
 
 export const canalLock: PowerupDefinition = {
@@ -25,18 +26,27 @@ export const canalLock: PowerupDefinition = {
     onSpawn(boat, map) {
       if (map.bridges.length === 0) return [];
 
-      // Find the nearest bridge to the boat
       const bx = boat.transform.pos.x;
       const by = boat.transform.pos.y;
+      // Forward direction of the boat
+      const fx = Math.cos(boat.transform.angle);
+      const fy = Math.sin(boat.transform.angle);
 
+      // Prefer the nearest bridge that is ahead of the boat's heading.
+      // Score = forward dot product (positive = ahead); ties broken by distance.
       let nearest = map.bridges[0]!;
-      let nearestDist = Infinity;
+      let bestScore = -Infinity;
       for (const bridge of map.bridges) {
         const mx = (bridge.start.x + bridge.end.x) / 2;
         const my = (bridge.start.y + bridge.end.y) / 2;
-        const d = (mx - bx) ** 2 + (my - by) ** 2;
-        if (d < nearestDist) {
-          nearestDist = d;
+        const dx = mx - bx;
+        const dy = my - by;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const forward = (dx * fx + dy * fy) / dist; // −1..1, positive = ahead
+        // Penalise bridges behind; among those ahead, prefer closer ones
+        const score = forward - dist / 10000;
+        if (score > bestScore) {
+          bestScore = score;
           nearest = bridge;
         }
       }
@@ -54,5 +64,6 @@ export const canalLock: PowerupDefinition = {
 
   visual: {
     hudIcon: "🌉",
+    drawIcon: drawCanalLockIcon,
   },
 };

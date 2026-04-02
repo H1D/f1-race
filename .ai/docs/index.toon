@@ -2,9 +2,9 @@ project: boat-race
 type: typescript/canvas
 framework: none (vanilla Canvas 2D)
 runtime: bun
-updated: 2026-04-02 (powerups: Bicycle Drag rename, water-only spawns, color scheme)
+updated: 2026-04-02 (sound subsystem: procedural Web Audio synthesis)
 
-features[11]{name,path,status,layer}:
+features[12]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend
   racing,.ai/docs/features/racing.md,active,frontend
   camera,.ai/docs/features/camera.md,active,frontend
@@ -16,6 +16,7 @@ features[11]{name,path,status,layer}:
   debug,.ai/docs/features/debug.md,active,frontend
   game-log,.ai/docs/features/game-log.md,active,frontend
   particles,.ai/docs/features/particles.md,active,frontend
+  sound,.ai/docs/features/sound.md,active,frontend
 
 docs[3]{type,path}:
   architecture,.ai/docs/architecture.md
