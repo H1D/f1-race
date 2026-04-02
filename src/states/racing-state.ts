@@ -158,6 +158,10 @@ export class RacingState implements GameState {
   private p2Laps = 0;
   private raceTimer = 0;
   private winnerTime = 0;
+  private winnerPenalty = 0;
+  private p1PenaltyTime = 0;
+  private p2PenaltyTime = 0;
+  private readonly checkpointPenalty = 3; // seconds per missed checkpoint
   private collisionResult: CollisionResult = {
     collided: false,
     contactX: 0,
@@ -313,40 +317,42 @@ export class RacingState implements GameState {
     return dist < gateLen * 1.5;
   }
 
+  private addCheckpointPenalty(boat: Entity, nextCheckpoint: number) {
+    if (boat === this.player1) {
+      this.p1PenaltyTime += this.checkpointPenalty;
+    } else {
+      this.p2PenaltyTime += this.checkpointPenalty;
+    }
+    this.toasts.push({
+      name: `Checkpoint ${nextCheckpoint + 1} missed! +${this.checkpointPenalty}s`,
+      icon: "⚠",
+      color: "#ee3344",
+      elapsed: 0,
+      duration: 1.5,
+      boat,
+    });
+  }
+
   private updateCheckpoints(boat: Entity, nextCheckpoint: number): number {
     const cps = this.map.checkpoints;
     if (!cps || cps.length === 0) return nextCheckpoint;
 
-    // Crossed the expected next checkpoint
-    if (nextCheckpoint < cps.length && this.crossesGate(boat, cps[nextCheckpoint]!)) {
+    // Crossed the expected next checkpoint (must be near it)
+    if (nextCheckpoint < cps.length && this.nearGate(boat, cps[nextCheckpoint]!) && this.crossesGate(boat, cps[nextCheckpoint]!)) {
       return nextCheckpoint + 1;
     }
 
     // Crossed a later checkpoint nearby — missed one
     for (let i = nextCheckpoint + 1; i < cps.length; i++) {
       if (this.nearGate(boat, cps[i]!) && this.crossesGate(boat, cps[i]!)) {
-        this.toasts.push({
-          name: `Checkpoint ${nextCheckpoint + 1} missed!`,
-          icon: "⚠",
-          color: "#ee3344",
-          elapsed: 0,
-          duration: 1.5,
-          boat,
-        });
+        this.addCheckpointPenalty(boat, nextCheckpoint);
         return nextCheckpoint;
       }
     }
 
     // Crossed finish line without all checkpoints
     if (nextCheckpoint < cps.length && this.nearGate(boat, this.map.finishLine) && this.crossesGate(boat, this.map.finishLine)) {
-      this.toasts.push({
-        name: `Checkpoint ${nextCheckpoint + 1} missed!`,
-        icon: "⚠",
-        color: "#ee3344",
-        elapsed: 0,
-        duration: 1.5,
-        boat,
-      });
+      this.addCheckpointPenalty(boat, nextCheckpoint);
     }
 
     return nextCheckpoint;
@@ -538,6 +544,7 @@ export class RacingState implements GameState {
         if (this.p1Laps >= this.totalLaps) {
           this.winner = "Player 1";
           this.winnerTime = this.raceTimer;
+          this.winnerPenalty = this.p1PenaltyTime;
           this.winTime = 0;
           this.gameLog.log("Player 1 wins!", "system");
         } else {
@@ -553,6 +560,7 @@ export class RacingState implements GameState {
         if (this.p2Laps >= this.totalLaps) {
           this.winner = "Player 2";
           this.winnerTime = this.raceTimer;
+          this.winnerPenalty = this.p2PenaltyTime;
           this.winTime = 0;
           this.gameLog.log("Player 2 wins!", "system");
         } else {
@@ -784,23 +792,40 @@ export class RacingState implements GameState {
       ctx.fillText(`${this.winner} Wins!`, w / 2, h / 2 - 30);
 
       // Winner time
-      const wMins = Math.floor(this.winnerTime / 60);
-      const wSecs = Math.floor(this.winnerTime % 60);
-      const wMs = Math.floor((this.winnerTime % 1) * 100);
-      const wTimeStr = `${wMins}:${String(wSecs).padStart(2, "0")}.${String(wMs).padStart(2, "0")}`;
+      const totalTime = this.winnerTime + this.winnerPenalty;
+      const fmtTime = (t: number) => {
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        const ms = Math.floor((t % 1) * 100);
+        return `${m}:${String(s).padStart(2, "0")}.${String(ms).padStart(2, "0")}`;
+      };
+
       ctx.font = "bold 32px monospace";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText(wTimeStr, w / 2, h / 2 + 30);
+      ctx.fillText(fmtTime(totalTime), w / 2, h / 2 + 30);
+
+      // Show penalty breakdown if any
+      let nextY = h / 2 + 65;
+      if (this.winnerPenalty > 0) {
+        ctx.font = "18px monospace";
+        ctx.fillStyle = "rgba(255,100,100,0.9)";
+        ctx.fillText(
+          `Race: ${fmtTime(this.winnerTime)}  +  Penalty: ${fmtTime(this.winnerPenalty)}`,
+          w / 2, nextY,
+        );
+        nextY += 35;
+      }
 
       // Subtitle
       ctx.font = "bold 22px monospace";
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText("RACE FINISHED", w / 2, h / 2 + 70);
+      ctx.fillText("RACE FINISHED", w / 2, nextY);
+      nextY += 50;
 
       if (this.winTime > 2) {
         ctx.font = "18px monospace";
         ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(this.winTime * 4) * 0.3})`;
-        ctx.fillText("Press SPACE to restart", w / 2, h / 2 + 120);
+        ctx.fillText("Press SPACE to restart", w / 2, nextY);
       }
 
       ctx.globalAlpha = 1;
@@ -838,9 +863,9 @@ export class RacingState implements GameState {
     ctx.font = "bold 65px monospace";
     const p1Left = this.totalLaps - this.p1Laps;
     const p2Left = this.totalLaps - this.p2Laps;
-    ctx.fillStyle = "rgba(224,64,64,0.6)";
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillText(`P1: ${p1Left} lap${p1Left !== 1 ? "s" : ""} left`, w / 2, 70);
-    ctx.fillStyle = "rgba(224,192,64,0.6)";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillText(
       `P2: ${p2Left} lap${p2Left !== 1 ? "s" : ""} left`,
       w / 2,
