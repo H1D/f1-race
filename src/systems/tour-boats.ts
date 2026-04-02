@@ -126,10 +126,15 @@ export function collideTourBoats(
   playerVelX: number,
   playerVelY: number,
   playerRadius: number,
-): { hit: boolean; velX: number; velY: number } {
+): { hit: boolean; velX: number; velY: number; contactX: number; contactY: number; normalX: number; normalY: number; impactSpeed: number } {
   let velX = playerVelX;
   let velY = playerVelY;
   let hit = false;
+  let contactX = 0;
+  let contactY = 0;
+  let normalX = 0;
+  let normalY = 0;
+  let impactSpeed = 0;
 
   for (const boat of boats) {
     const dx = playerX - boat.x;
@@ -139,9 +144,14 @@ export function collideTourBoats(
 
     if (dist < minDist && dist > 0) {
       hit = true;
-      // Push player away + bounce
       const nx = dx / dist;
       const ny = dy / dist;
+      contactX = (playerX + boat.x) / 2;
+      contactY = (playerY + boat.y) / 2;
+      normalX = nx;
+      normalY = ny;
+      impactSpeed = Math.hypot(playerVelX, playerVelY);
+
       const vDotN = velX * nx + velY * ny;
       if (vDotN < 0) {
         velX -= vDotN * 1.5 * nx;
@@ -150,5 +160,5 @@ export function collideTourBoats(
     }
   }
 
-  return { hit, velX, velY };
+  return { hit, velX, velY, contactX, contactY, normalX, normalY, impactSpeed };
 }

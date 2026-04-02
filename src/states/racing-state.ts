@@ -408,6 +408,7 @@ export class RacingState implements GameState {
       updatePhysics(this.player1, input.player1, dt);
       resolveMapCollisions(this.player1, this.map, flooded, this.wallResult);
       if (this.wallResult.collided) {
+        emitCollisionSparks(this.particles, this.wallResult);
         playSound(this.sound, "wall-collision", {
           intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
         });
@@ -422,6 +423,7 @@ export class RacingState implements GameState {
       updatePhysics(this.player2, input.player2, dt);
       resolveMapCollisions(this.player2, this.map, flooded, this.wallResult);
       if (this.wallResult.collided) {
+        emitCollisionSparks(this.particles, this.wallResult);
         playSound(this.sound, "wall-collision", {
           intensity: Math.min(this.wallResult.impactSpeed / 8, 1),
         });
@@ -496,6 +498,13 @@ export class RacingState implements GameState {
     if (p1Col.hit) {
       this.player1.velocity.x = p1Col.velX;
       this.player1.velocity.y = p1Col.velY;
+      this.collisionResult.collided = true;
+      this.collisionResult.contactX = p1Col.contactX;
+      this.collisionResult.contactY = p1Col.contactY;
+      this.collisionResult.normalX = p1Col.normalX;
+      this.collisionResult.normalY = p1Col.normalY;
+      this.collisionResult.impactSpeed = p1Col.impactSpeed;
+      emitCollisionSparks(this.particles, this.collisionResult);
     }
 
     const p2Pos = this.player2.transform.pos;
@@ -503,6 +512,13 @@ export class RacingState implements GameState {
     if (p2Col.hit) {
       this.player2.velocity.x = p2Col.velX;
       this.player2.velocity.y = p2Col.velY;
+      this.collisionResult.collided = true;
+      this.collisionResult.contactX = p2Col.contactX;
+      this.collisionResult.contactY = p2Col.contactY;
+      this.collisionResult.normalX = p2Col.normalX;
+      this.collisionResult.normalY = p2Col.normalY;
+      this.collisionResult.impactSpeed = p2Col.impactSpeed;
+      emitCollisionSparks(this.particles, this.collisionResult);
     }
 
     // Checkpoint + finish line tracking
