@@ -280,86 +280,17 @@ export function drawStompotIcon(ctx: CanvasRenderingContext2D, size: number): vo
 }
 
 /**
- * Crown icon for Kingsday Invasion — orange crown with 5 points + Dutch flag tricolor base.
+ * Crown icon for Kingsday Invasion — pixel art sprite from crown.png.
+ * Loaded at module init; renders centered at (0,0) within ±size/2.
  */
+const _crownImage = new Image();
+_crownImage.src = new URL("../assets/crown.png", import.meta.url).href;
+
 export function drawCrownIcon(ctx: CanvasRenderingContext2D, size: number): void {
-  const s = size / 2;
-
+  if (!_crownImage.complete || _crownImage.naturalWidth === 0) return;
   ctx.save();
-
-  // Crown body: trapezoid base
-  const baseTop = s * 0.10;
-  const baseBot = s * 0.62;
-  const baseW   = s * 0.78;
-  const bandH   = s * 0.20; // Dutch flag stripes height
-
-  // --- Dutch flag band at the very bottom ---
-  const bandY = baseBot - bandH;
-  const bw = baseW * 0.88;
-  const strH = bandH / 3;
-
-  ctx.fillStyle = "#ae1c28"; // red
-  ctx.fillRect(-bw, bandY, bw * 2, strH);
-  ctx.fillStyle = "#ffffff"; // white
-  ctx.fillRect(-bw, bandY + strH, bw * 2, strH);
-  ctx.fillStyle = "#21468b"; // blue
-  ctx.fillRect(-bw, bandY + strH * 2, bw * 2, strH);
-
-  // --- Crown body fill (orange) above flag band ---
-  ctx.fillStyle = "#ff9900";
-  ctx.beginPath();
-  ctx.moveTo(-baseW, baseBot);
-  ctx.lineTo(-baseW, baseTop);
-  ctx.lineTo( baseW, baseTop);
-  ctx.lineTo( baseW, baseBot);
-  ctx.closePath();
-  ctx.fill();
-
-  // --- Five crown points (triangles rising above the band) ---
-  const pointBase = baseTop;
-  const pointH    = s * 0.72; // height above pointBase
-  const pointY    = pointBase - pointH;
-  const halfBase  = s * 0.14;
-
-  // 5 points: center and two on each side
-  const pointXs = [-baseW * 0.92, -baseW * 0.50, 0, baseW * 0.50, baseW * 0.92];
-
-  ctx.fillStyle = "#ff9900";
-  for (const px of pointXs) {
-    ctx.beginPath();
-    ctx.moveTo(px - halfBase, pointBase);
-    ctx.lineTo(px,             pointY);
-    ctx.lineTo(px + halfBase, pointBase);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Outline the whole crown
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = Math.max(0.5, size * 0.028);
-
-  // Points outlines
-  for (const px of pointXs) {
-    ctx.beginPath();
-    ctx.moveTo(px - halfBase, pointBase);
-    ctx.lineTo(px,             pointY);
-    ctx.lineTo(px + halfBase, pointBase);
-    ctx.stroke();
-  }
-  // Body outline
-  ctx.beginPath();
-  ctx.rect(-baseW, baseTop, baseW * 2, baseBot - baseTop);
-  ctx.stroke();
-
-  // Three small gem dots on the three center points
-  const gemY = pointBase - pointH * 0.38;
-  ctx.fillStyle = "#ffffff";
-  for (const px of [pointXs[1]!, pointXs[2]!, pointXs[3]!]) {
-    ctx.beginPath();
-    ctx.arc(px, gemY, Math.max(1, s * 0.07), 0, Math.PI * 2);
-    ctx.fill();
-  }
-
+  ctx.imageSmoothingEnabled = false; // keep pixel art crisp
+  ctx.drawImage(_crownImage, -size / 2, -size / 2, size, size);
   ctx.restore();
 }
 
