@@ -1,6 +1,6 @@
 # Boat Race
 
-Top-down 2D boat racing game. Vanilla TypeScript + Canvas 2D, bundled with Bun. Single boat with physics-driven handling on user-editable polygon river tracks. In-game map editor with freehand drawing, attribute placement, and bridges.
+Top-down 2D two-player boat racing game. Vanilla TypeScript + Canvas 2D, bundled with Bun. Two boats (P1 WASD, P2 Arrows) with physics-driven handling on user-editable polygon river tracks. In-game map editor with freehand drawing, attribute placement, and bridges. Boats pass under bridges.
 
 ## Commands
 
@@ -20,7 +20,7 @@ bun run fmt        # oxfmt auto-format
 | main | src/main.ts | Canvas setup, wires input/state/loop |
 | game-loop | src/game-loop.ts | Fixed 60Hz timestep + interpolated render |
 | state-manager | src/state-manager.ts | GameState lifecycle (enter/exit/update/render) |
-| racing-state | src/states/racing-state.ts | Main gameplay — boat + physics + collision + map + editor button |
+| racing-state | src/states/racing-state.ts | Main gameplay — 2 boats + physics + collision + map + editor button |
 | editor-state | src/editor/editor-state.ts | Map editor — draw/edit river + attributes + bridges |
 | physics | src/systems/physics.ts | Anisotropic drag + motor ramp + speed-dependent steering |
 | collision | src/systems/collision.ts | Polygon boundary + edge-normal wall response |
@@ -35,7 +35,7 @@ bun run fmt        # oxfmt auto-format
 1. Game loop ticks at 60Hz → `input.update(dt)` → `states.update(dt, input)`
 2. Physics: decompose world velocity to local → anisotropic drag → thrust → recompose → integrate
 3. Collision: keep boat inside outer polygon + outside island. Edge-normal push + velocity cancellation
-4. Render: camera transform → `renderMap()` → boat → HUD
+4. Render: camera transform → `renderMap()` → boats → `renderBridges()` (boats under) → HUD
 5. States: MenuState → RacingState ↔ EditorState
 
 ### Patterns
@@ -60,11 +60,11 @@ bun run fmt        # oxfmt auto-format
 | Feature | Entry Point | Description |
 |---------|-------------|-------------|
 | Boat Physics | src/systems/physics.ts | Anisotropic drag, motor ramp, speed-dependent steering |
-| Racing | src/states/racing-state.ts | Single-player gameplay with polygon map |
-| Camera | src/systems/camera.ts | Follow camera with look-ahead |
+| Racing | src/states/racing-state.ts | Two-player gameplay with polygon map |
+| Camera | src/systems/camera.ts | Dual-mode camera (follow / fixed framing both boats) |
 | Map Editor | src/editor/editor-state.ts | Freehand draw + point edit + attributes + bridges |
 | Track | src/map/map-data.ts | Polygon river channel (outer bank + island) |
-| Input | src/input.ts | Keyboard input with smooth steering accumulator |
+| Input | src/input.ts | Two-player keyboard input (P1 WASD, P2 Arrows) |
 | Debug | src/debug.ts | Physics tuning sliders + 4 presets |
 
 ## Project Structure

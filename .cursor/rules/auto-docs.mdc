@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Boat Race
 
-Top-down 2D boat racing game. Vanilla TypeScript + Canvas 2D, bundled with Bun. Single boat with physics-driven handling on user-editable polygon river tracks. In-game map editor with freehand drawing, attribute placement, and bridges.
+Top-down 2D two-player boat racing game. Vanilla TypeScript + Canvas 2D, bundled with Bun. Two boats (P1 WASD, P2 Arrows) with physics-driven handling on user-editable polygon river tracks. In-game map editor. Boats pass under bridges.
 
 ## Commands
 

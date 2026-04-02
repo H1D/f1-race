@@ -20,7 +20,7 @@ files[4]{path,purpose}:
 - **Water**: inside outline AND outside island. `isOnWater()` = `pointInPolygon(outer) && !pointInPolygon(island)`
 - **Default map**: 8-point ellipses — outer 900x650, island 720x480, worldSize 1200
 - **Collision**: `resolveMapCollisions()` keeps boat inside outline + outside island. Edge-normal push + wall-normal velocity cancellation with sliding friction
-- **Rendering**: green fill → water polygon → island green → clipped grid (evenodd) → wall strokes → bridges → attributes
+- **Rendering**: green fill → water polygon → island green → clipped grid (evenodd) → wall strokes → attributes. Bridges render separately after boats (boats pass under)
 
 ## Gotchas
 

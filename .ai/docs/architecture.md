@@ -8,7 +8,7 @@ components[14]{name,type,path,responsibility}:
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
   menu-state,state,src/states/menu-state.ts,title screen + press-space-to-start
-  racing-state,state,src/states/racing-state.ts,main gameplay — spawns boat + runs systems + debug + editor button
+  racing-state,state,src/states/racing-state.ts,main gameplay — spawns 2 boats + runs systems + debug + editor button
   editor-state,state,src/editor/editor-state.ts,map editor — draw/edit river outline + place attributes + bridges
   editor-toolbar,ui,src/editor/toolbar.ts,HTML toolbar with mode tabs and action buttons
   physics,system,src/systems/physics.ts,world-space velocity decompose/recompose + anisotropic drag + motor ramp
@@ -27,7 +27,7 @@ components[14]{name,type,path,responsibility}:
 3. `RacingState.update()` runs `updatePhysics()` + `resolveMapCollisions()` per boat
 4. Physics: decompose world velocity to local frame → anisotropic drag → thrust → recompose → cap max speed → integrate
 5. Collision: check boat inside outer polygon + outside island polygon. On hit: push to nearest edge via edge normal, cancel wall-normal velocity, apply tangential friction
-6. Render: clear → camera transform → `renderMap()` (green land + water + grid + walls + bridges + attributes) → boat → restore → HUD
+6. Render: clear → camera transform → `renderMap()` (land + water + grid + walls + attributes) → boats → `renderBridges()` (boats pass under) → restore → HUD
 7. State transitions: MenuState → RacingState ↔ EditorState
 
 ## Patterns
@@ -44,4 +44,4 @@ components[14]{name,type,path,responsibility}:
 
 - **No external APIs** — fully client-side canvas game
 - **No database** — no persistence yet
-- **No auth** — single player
+- **No auth** — local two-player on shared screen (WASD + Arrows)

@@ -1,13 +1,13 @@
 import type {
+  DualInput,
   GameContext,
   GameState,
-  InputState,
   Vec2,
   MapData,
   AttributeType,
 } from "../types";
 import { getCurrentMap, setCurrentMap, createDefaultMap, isOnLand } from "../map/map-data";
-import { renderMap, renderAttributeMarker } from "../map/map-renderer";
+import { renderMap, renderBridges, renderAttributeMarker } from "../map/map-renderer";
 import {
   distToSegmentSq,
   lineIntersectsPolygon,
@@ -141,7 +141,7 @@ export class EditorState implements GameState {
     window.removeEventListener("keydown", this._onKeyDown);
   }
 
-  update(_dt: number, _input: InputState) {}
+  update(_dt: number, _input: DualInput) {}
 
   render(ctx: CanvasRenderingContext2D, _alpha: number) {
     const w = this.gameCtx.canvas.width;
@@ -157,6 +157,7 @@ export class EditorState implements GameState {
 
     const previewMap = this.previewing ? this.buildPreviewMap() : this.map;
     renderMap(ctx, previewMap);
+    renderBridges(ctx, previewMap);
 
     if (!this.previewing) {
       if (this.mode === "outline") this.renderOutlineOverlay(ctx);

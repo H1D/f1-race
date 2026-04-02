@@ -90,20 +90,16 @@ export function resolveMapCollisions(entity: Entity, map: MapData): void {
   // Outer bank — boat must stay INSIDE the outline
   if (map.outline.length >= 3 && !pointInPolygon(pos, map.outline)) {
     const edge = findNearestEdge(pos, map.outline);
-    // Push to edge + inward (opposite of outward normal)
     pos.x = edge.point.x - edge.nx * PUSH_DIST;
     pos.y = edge.point.y - edge.ny * PUSH_DIST;
-    // Inward normal for wall response
     wallResponse(vel, -edge.nx, -edge.ny);
   }
 
   // Island — boat must stay OUTSIDE the island
   if (map.island.length >= 3 && pointInPolygon(pos, map.island)) {
     const edge = findNearestEdge(pos, map.island);
-    // Push to edge + outward
     pos.x = edge.point.x + edge.nx * PUSH_DIST;
     pos.y = edge.point.y + edge.ny * PUSH_DIST;
-    // Outward normal for wall response
     wallResponse(vel, edge.nx, edge.ny);
   }
 }
