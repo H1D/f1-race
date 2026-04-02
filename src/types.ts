@@ -123,11 +123,37 @@ export interface CollisionResult {
   impactSpeed: number; // pre-damping speed
 }
 
-// === Track boundary ===
+// === Track boundary (legacy) ===
 export interface TrackBounds {
   outer: { minX: number; minY: number; maxX: number; maxY: number };
   inner: { minX: number; minY: number; maxX: number; maxY: number };
   startX: number;
   startY: number;
+  startAngle: number;
+}
+
+// === Map data ===
+export type AttributeType = "albert-heijn" | "effendi" | "doctor-falafel";
+
+export interface MapAttribute {
+  id: number;
+  type: AttributeType;
+  position: Vec2;
+}
+
+export interface Bridge {
+  id: number;
+  start: Vec2;
+  end: Vec2;
+  width: number;
+}
+
+export interface MapData {
+  outline: Vec2[];       // outer bank of the water channel
+  island: Vec2[];        // inner land mass (the center island)
+  attributes: MapAttribute[];
+  bridges: Bridge[];
+  worldSize: number;
+  startPos: Vec2;
   startAngle: number;
 }

@@ -8,10 +8,10 @@ features[7]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend
   racing,.ai/docs/features/racing.md,active,frontend
   camera,.ai/docs/features/camera.md,active,frontend
-  track,.ai/docs/features/track.md,wip,frontend
+  map-editor,.ai/docs/features/map-editor.md,active,frontend
+  track,.ai/docs/features/track.md,active,frontend
   input,.ai/docs/features/input.md,active,frontend
   debug,.ai/docs/features/debug.md,active,frontend
-  particles,.ai/docs/features/particles.md,active,frontend
 
 docs[3]{type,path}:
   architecture,.ai/docs/architecture.md

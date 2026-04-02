@@ -1,91 +1,109 @@
-import type { CollisionResult, Entity, TrackBounds } from "../types";
+import type { Entity, MapData, TrackBounds } from "../types";
+import { pointInPolygon, findNearestEdge } from "../map/geometry";
 
-export function resolveCollisions(
-  entity: Entity,
-  track: TrackBounds,
-  out: CollisionResult,
-): void {
+const PUSH_DIST = 6;
+const WALL_FRICTION = 0.5; // tangential velocity kept on wall slide
+const BOUNCE = 0.05; // tiny bounce off the wall
+
+/** Legacy AABB collision for TrackBounds */
+export function resolveCollisions(entity: Entity, track: TrackBounds): void {
   const pos = entity.transform.pos;
   const vel = entity.velocity;
 
-  // Capture pre-collision speed for spark intensity
-  const impactSpeed = Math.sqrt(vel.x ** 2 + vel.y ** 2);
+  let collided = false;
 
-  // Reset result
-  out.collided = false;
-  out.contactX = pos.x;
-  out.contactY = pos.y;
-  out.normalX = 0;
-  out.normalY = 0;
-  out.impactSpeed = 0;
-
-  // Must stay inside outer boundary
   if (pos.x < track.outer.minX) {
     pos.x = track.outer.minX;
-    out.collided = true;
-    out.normalX = 1; // pointing right, away from left wall
-    out.contactX = pos.x;
-    out.contactY = pos.y;
+    collided = true;
   } else if (pos.x > track.outer.maxX) {
     pos.x = track.outer.maxX;
-    out.collided = true;
-    out.normalX = -1;
-    out.contactX = pos.x;
-    out.contactY = pos.y;
+    collided = true;
   }
 
   if (pos.y < track.outer.minY) {
     pos.y = track.outer.minY;
-    out.collided = true;
-    out.normalY = 1; // pointing down, away from top wall
-    out.contactX = pos.x;
-    out.contactY = pos.y;
+    collided = true;
   } else if (pos.y > track.outer.maxY) {
     pos.y = track.outer.maxY;
-    out.collided = true;
-    out.normalY = -1;
-    out.contactX = pos.x;
-    out.contactY = pos.y;
+    collided = true;
   }
 
-  // Must stay outside inner island
   const inner = track.inner;
-  if (
-    pos.x > inner.minX &&
-    pos.x < inner.maxX &&
-    pos.y > inner.minY &&
-    pos.y < inner.maxY
-  ) {
+  if (pos.x > inner.minX && pos.x < inner.maxX && pos.y > inner.minY && pos.y < inner.maxY) {
     const dLeft = pos.x - inner.minX;
     const dRight = inner.maxX - pos.x;
     const dTop = pos.y - inner.minY;
     const dBottom = inner.maxY - pos.y;
     const minDist = Math.min(dLeft, dRight, dTop, dBottom);
 
-    if (minDist === dLeft) {
-      pos.x = inner.minX;
-      out.normalX = -1; // push left, away from island
-    } else if (minDist === dRight) {
-      pos.x = inner.maxX;
-      out.normalX = 1;
-    } else if (minDist === dTop) {
-      pos.y = inner.minY;
-      out.normalY = -1; // push up, away from island
-    } else {
-      pos.y = inner.maxY;
-      out.normalY = 1;
-    }
+    if (minDist === dLeft) pos.x = inner.minX;
+    else if (minDist === dRight) pos.x = inner.maxX;
+    else if (minDist === dTop) pos.y = inner.minY;
+    else pos.y = inner.maxY;
 
-    out.collided = true;
-    out.contactX = pos.x;
-    out.contactY = pos.y;
+    collided = true;
   }
 
-  // On collision: dampen world velocity
-  if (out.collided) {
-    out.impactSpeed = impactSpeed;
+  if (collided) {
     vel.x *= 0.3;
     vel.y *= 0.3;
     vel.angular *= 0.5;
+  }
+}
+
+/**
+ * Cancel the velocity component pushing into the wall, keep the sliding component.
+ * nx,ny = outward normal of the wall the boat hit.
+ */
+function wallResponse(vel: { x: number; y: number; angular: number }, nx: number, ny: number) {
+  // Velocity dot normal = how fast we're moving INTO the wall (negative = toward wall)
+  const vDotN = vel.x * nx + vel.y * ny;
+
+  if (vDotN < 0) {
+    // Remove the into-wall component, add tiny bounce
+    vel.x -= vDotN * (1 + BOUNCE) * nx;
+    vel.y -= vDotN * (1 + BOUNCE) * ny;
+  }
+
+  // Apply friction to the remaining tangential velocity
+  const tDotN = vel.x * nx + vel.y * ny; // should be ~0 or small positive now
+  const tx = vel.x - tDotN * nx;
+  const ty = vel.y - tDotN * ny;
+  vel.x = tDotN * nx + tx * WALL_FRICTION;
+  vel.y = tDotN * ny + ty * WALL_FRICTION;
+
+  vel.angular *= 0.5;
+}
+
+/** Polygon-based collision for MapData */
+export function resolveMapCollisions(entity: Entity, map: MapData): void {
+  const pos = entity.transform.pos;
+  const vel = entity.velocity;
+
+  // World boundary
+  const ws = map.worldSize;
+  if (pos.x < -ws) { pos.x = -ws; vel.x = Math.max(0, vel.x); }
+  if (pos.x > ws) { pos.x = ws; vel.x = Math.min(0, vel.x); }
+  if (pos.y < -ws) { pos.y = -ws; vel.y = Math.max(0, vel.y); }
+  if (pos.y > ws) { pos.y = ws; vel.y = Math.min(0, vel.y); }
+
+  // Outer bank — boat must stay INSIDE the outline
+  if (map.outline.length >= 3 && !pointInPolygon(pos, map.outline)) {
+    const edge = findNearestEdge(pos, map.outline);
+    // Push to edge + inward (opposite of outward normal)
+    pos.x = edge.point.x - edge.nx * PUSH_DIST;
+    pos.y = edge.point.y - edge.ny * PUSH_DIST;
+    // Inward normal for wall response
+    wallResponse(vel, -edge.nx, -edge.ny);
+  }
+
+  // Island — boat must stay OUTSIDE the island
+  if (map.island.length >= 3 && pointInPolygon(pos, map.island)) {
+    const edge = findNearestEdge(pos, map.island);
+    // Push to edge + outward
+    pos.x = edge.point.x + edge.nx * PUSH_DIST;
+    pos.y = edge.point.y + edge.ny * PUSH_DIST;
+    // Outward normal for wall response
+    wallResponse(vel, edge.nx, edge.ny);
   }
 }
