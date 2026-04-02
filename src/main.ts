@@ -23,7 +23,7 @@ const gameCtx: GameContext = {
   canvas,
   ctx,
   switchState: (_s: GameState) => {},
-  input: input.state,
+  input: { player1: input.player1, player2: input.player2 },
 };
 
 // State manager
@@ -33,7 +33,7 @@ const states = createStateManager(gameCtx);
 const loop = createGameLoop(
   (dt) => {
     input.update(dt);
-    states.update(dt, input.state);
+    states.update(dt, { player1: input.player1, player2: input.player2 });
   },
   (alpha) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
