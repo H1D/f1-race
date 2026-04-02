@@ -62,7 +62,7 @@ export function createTourBoats(map: MapData, count: number): { boats: TourBoat[
       y: pos.y,
       angle: pos.angle,
       pathProgress: progress,
-      speed: 3.5 + Math.random() * 1.0, // moderate ~3.5-4.5 units/sec
+      speed: -(3.5 + Math.random() * 1.0), // opposite direction to players
     });
   }
 
@@ -76,14 +76,16 @@ export function updateTourBoats(boats: TourBoat[], centerline: Vec2[], dt: numbe
     // Advance along the path
     boat.pathProgress += (boat.speed * dt) / perimeter;
     if (boat.pathProgress >= 1) boat.pathProgress -= 1;
+    if (boat.pathProgress < 0) boat.pathProgress += 1;
 
     const pos = sampleCenterline(centerline, boat.pathProgress);
     // Smooth position and angle
     boat.x += (pos.x - boat.x) * 0.1;
     boat.y += (pos.y - boat.y) * 0.1;
 
-    // Smooth angle (shortest path)
-    let angleDiff = pos.angle - boat.angle;
+    // Flip angle 180° since tour boats travel in reverse direction
+    const targetAngle = boat.speed < 0 ? pos.angle + Math.PI : pos.angle;
+    let angleDiff = targetAngle - boat.angle;
     angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     boat.angle += angleDiff * 0.1;
   }
