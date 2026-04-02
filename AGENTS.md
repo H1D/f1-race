@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), a data-driven powerup system with lifecycle hooks, event logging, and collapsible live debug panels.
+Top-down 2D two-player boat racing game set on Amsterdam canals. Vanilla TypeScript + Canvas 2D, bundled with Bun, deployed on Netlify. Two boats on shared screen (WASD + Arrows) with world-space anisotropic drag physics, motor voltage ramp, speed-dependent steering, dual-mode camera (follow/fixed with dynamic zoom), pooled particle effects (wake spray + collision sparks), a data-driven powerup system with lifecycle hooks, event logging, and collapsible live debug panels.
 
 ## Commands
 
@@ -28,10 +28,11 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | entity | `src/entity.ts` | Entity factories (boat/pickup/obstacle/zone) + ID counter |
 | entity-manager | `src/entity-manager.ts` | Entity list with tag/component queries + cleanup |
 | physics | `src/systems/physics.ts` | World-space decompose/recompose + anisotropic drag + motor ramp |
-| collision | `src/systems/collision.ts` | AABB canal boundary enforcement (world-space vel) |
+| collision | `src/systems/collision.ts` | AABB canal boundary enforcement + CollisionResult out-param |
 | camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
 | boat-render | `src/systems/boat-render.ts` | boat.png sprite with interpolation + procedural fallback |
 | background-render | `src/systems/background-render.ts` | Water + island + wall + grid |
+| particles | `src/systems/particles.ts` | Pooled particle effects — wake spray + collision sparks (512-slot pool) |
 | powerup-spawn | `src/systems/powerup-spawn.ts` | Timer-based weighted powerup spawning |
 | powerup-collision | `src/systems/powerup-collision.ts` | Circle-circle pickup detection |
 | powerup-effects | `src/systems/powerup-effects.ts` | Effect apply/tick/expire lifecycle with stacking rules |
@@ -45,10 +46,10 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
-2. RacingState runs `updatePhysics()` + `resolveCollisions()` for each boat independently
+2. RacingState runs `updatePhysics()` + `resolveCollisions()` + particle emitters for each boat, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-5. Render: clear → camera transform → background → zones → pickups → obstacles → both boats + effect visuals → HUD → effects HUD → event log
+5. Render: clear → camera transform → background → zones → pickups → obstacles → particles → both boats + effect visuals → HUD → effects HUD → event log
 
 **Patterns:**
 - **ECS-lite**: Entity = data bag, Systems = pure functions
@@ -57,6 +58,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Motor voltage ramp**: Throttle sets `targetVoltage`, ramps up (1.5/s) and down (2.5/s). Reverse targets -0.4
 - **Anisotropic drag**: Forward drag 0.012 (glide) + lateral drag 0.95 (resist drift), ~79:1 ratio
 - **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (dynamic zoom, no rotation) — smooth 500ms transition
+- **Zero-allocation particle pool**: 512 pre-allocated slots reused via `active` flag — no GC pressure
 - **Data-driven powerups**: PowerupDefinition registry with onApply/onTick/onExpire hooks + optional `tunables` record for debug-panel knobs
 - **Multiplier-based effect reversal**: Effects store multipliers, divide on expire — order-independent
 - **Orchestrator logging**: Systems stay pure, RacingState observes outputs and logs events
@@ -78,6 +80,8 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - `build.ts` and `serve.ts` must copy `src/boat/boat.png` to `dist/`
 - Input system returns `DualInput` (`{ player1, player2 }`) — P1=WASD, P2=Arrows
 - `GameState.update()` takes `DualInput`, not single `InputState`
+- `renderParticles()` must be called between `applyCameraTransform()` and `ctx.restore()` — world-space rendering
+- `CollisionResult` is a mutable out-param — `resolveCollisions()` resets and populates it each frame
 
 ## Features
 
@@ -90,6 +94,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Game Log | active | `src/game-log.ts`, `src/powerup-debug.ts` |
 | Track | wip | `src/track.ts`, `src/systems/background-render.ts` |
 | Input | active | `src/input.ts` |
+| Particles | active | `src/systems/particles.ts` |
 | Debug | active | `src/debug.ts`, `src/powerup-debug.ts` |
 
 ## Project Structure
@@ -99,7 +104,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | `src/` | Game source code |
 | `src/boat/` | Boat sprite (boat.png) + legacy standalone boat module |
 | `src/states/` | Game state implementations (menu, racing) |
-| `src/systems/` | ECS-style systems (physics, collision, camera, rendering, powerups) |
+| `src/systems/` | ECS-style systems (physics, collision, camera, rendering, particles, powerups) |
 | `src/powerups/` | Powerup registry + definitions |
 | `src/powerups/definitions/` | Individual powerup type definitions |
 | `public/` | Static HTML |

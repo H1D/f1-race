@@ -1,10 +1,12 @@
 import type {
   CameraState,
+  CollisionResult,
   DualInput,
   Entity,
   FloodState,
   GameContext,
   GameState,
+  Particle,
   PowerupDefinition,
   SpawnManagerState,
   TrackBounds,
@@ -28,6 +30,13 @@ import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals,
 import { loadPowerupDefinitions } from "../powerups/registry";
 import { createPowerupDebugSection } from "../powerup-debug";
 import { createGameLog, renderGameLog, type GameLog } from "../game-log";
+import {
+  createParticlePool,
+  emitCollisionSparks,
+  emitWake,
+  renderParticles,
+  updateParticles,
+} from "../systems/particles";
 
 export class RacingState implements GameState {
   private gameCtx!: GameContext;
@@ -45,6 +54,15 @@ export class RacingState implements GameState {
   private gameLog!: GameLog;
   private prevFloodActive = false;
   private lastDt = 1 / 60;
+  private particles!: Particle[];
+  private collisionResult: CollisionResult = {
+    collided: false,
+    contactX: 0,
+    contactY: 0,
+    normalX: 0,
+    normalY: 0,
+    impactSpeed: 0,
+  };
 
   enter(ctx: GameContext) {
     this.gameCtx = ctx;
@@ -69,6 +87,8 @@ export class RacingState implements GameState {
       _prevTarget: null,
       _transitionElapsed: 999,
     };
+
+    this.particles = createParticlePool(512);
 
     if (this.player1.boatPhysics) {
       this.debugPanel = createDebugMenu(this.player1.boatPhysics, this.camera, this.player2.boatPhysics ?? undefined);
@@ -112,10 +132,20 @@ export class RacingState implements GameState {
     this.lastDt = dt;
     this.gameLog.elapsedTime += dt;
 
+    // Player 1: physics → collision → particles
     updatePhysics(this.player1, input.player1, dt);
+    resolveCollisions(this.player1, this.track, this.collisionResult);
+    emitWake(this.particles, this.player1);
+    emitCollisionSparks(this.particles, this.collisionResult);
+
+    // Player 2: physics → collision → particles
     updatePhysics(this.player2, input.player2, dt);
-    resolveCollisions(this.player1, this.track);
-    resolveCollisions(this.player2, this.track);
+    resolveCollisions(this.player2, this.track, this.collisionResult);
+    emitWake(this.particles, this.player2);
+    emitCollisionSparks(this.particles, this.collisionResult);
+
+    // Particle physics
+    updateParticles(this.particles, dt);
 
     // Powerup spawning
     const newPickups = updatePowerupSpawning(
@@ -217,6 +247,9 @@ export class RacingState implements GameState {
     // Obstacles
     const obstacles = this.entityManager.getByTag("obstacle");
     renderObstacles(ctx, obstacles, alpha);
+
+    // Particles (world-space, between background and boats)
+    renderParticles(ctx, this.particles);
 
     renderBoat(ctx, this.player1, alpha);
     renderBoat(ctx, this.player2, alpha);

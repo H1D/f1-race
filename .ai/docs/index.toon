@@ -4,7 +4,7 @@ framework: none (vanilla Canvas 2D)
 runtime: bun
 updated: 2026-04-02
 
-features[8]{name,path,status,layer}:
+features[9]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend
   racing,.ai/docs/features/racing.md,active,frontend
   camera,.ai/docs/features/camera.md,active,frontend
@@ -13,6 +13,7 @@ features[8]{name,path,status,layer}:
   input,.ai/docs/features/input.md,active,frontend
   debug,.ai/docs/features/debug.md,active,frontend
   game-log,.ai/docs/features/game-log.md,active,frontend
+  particles,.ai/docs/features/particles.md,active,frontend
 
 docs[3]{type,path}:
   architecture,.ai/docs/architecture.md
