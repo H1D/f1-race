@@ -16,7 +16,7 @@ import { LAYER_BOAT } from "../types";
 import { createBoatEntity } from "../entity";
 import { getCurrentMap } from "../map/map-data";
 import { updatePhysics } from "../systems/physics";
-import { resolveMapCollisions } from "../systems/collision";
+import { resolveMapCollisions, resolveBoatCollision } from "../systems/collision";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
 import { renderMap, renderBridges } from "../map/map-renderer";
@@ -244,6 +244,28 @@ export class RacingState implements GameState {
     }
     emitWake(this.particles, this.player2);
     emitBowSpray(this.particles, this.player2);
+
+    // Boat-to-boat collision
+    const boatHit = resolveBoatCollision(this.player1, this.player2);
+    if (boatHit) {
+      const p1 = this.player1.transform.pos;
+      const p2 = this.player2.transform.pos;
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      this.collisionResult.collided = true;
+      this.collisionResult.contactX = (p1.x + p2.x) / 2;
+      this.collisionResult.contactY = (p1.y + p2.y) / 2;
+      this.collisionResult.normalX = dx / d;
+      this.collisionResult.normalY = dy / d;
+      this.collisionResult.impactSpeed = Math.sqrt(
+        (this.player1.velocity.x - this.player2.velocity.x) ** 2 +
+        (this.player1.velocity.y - this.player2.velocity.y) ** 2,
+      );
+      emitCollisionSparks(this.particles, this.collisionResult);
+    } else {
+      this.collisionResult.collided = false;
+    }
 
     updateParticles(this.particles, dt);
 

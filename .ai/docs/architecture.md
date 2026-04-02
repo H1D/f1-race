@@ -15,7 +15,7 @@ components[29]{name,type,path,responsibility}:
   editor-state,state,src/editor/editor-state.ts,map editor — draw/edit river outline + place attributes + bridges
   editor-toolbar,ui,src/editor/toolbar.ts,HTML toolbar with mode tabs and action buttons
   physics,system,src/systems/physics.ts,world-space velocity decompose/recompose + anisotropic drag + motor ramp
-  collision,system,src/systems/collision.ts,polygon boundary enforcement + edge-normal wall response with sliding
+  collision,system,src/systems/collision.ts,polygon boundary + wall response + boat-to-boat collision with impulse
   flooding,system,src/systems/flooding.ts,"periodic flood cycle (20s/5s), penalty system, settings panel, flood overlay"
   camera,system,src/systems/camera.ts,follow camera with look-ahead + rotation
   boat-render,system,src/systems/boat-render.ts,boat.png sprite with interpolation + procedural fallback
@@ -39,7 +39,7 @@ components[29]{name,type,path,responsibility}:
 
 1. `main.ts` creates canvas, dual-player input system, state manager, and game loop
 2. Game loop ticks at 60Hz — calls `input.update(dt)` then `states.update(dt, dualInput)`
-3. `RacingState.update()` runs physics → `resolveMapCollisions()` → particles for each boat, then powerup pipeline → cleanup
+3. `RacingState.update()` runs physics → `resolveMapCollisions()` → particles for each boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
 4. Physics: decompose world velocity (vx,vy) into local frame via dot product → anisotropic drag → thrust → recompose to world → cap max speed → integrate
 5. Collision: check boat inside outer polygon + outside island polygon. On hit: push to nearest edge via edge normal, cancel wall-normal velocity, apply tangential friction
 6. Powerup pipeline: spawn pickups (via `trackBoundsFromMap()` adapter) → detect pickup collisions (both boats) → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities

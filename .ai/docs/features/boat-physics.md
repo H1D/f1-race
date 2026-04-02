@@ -9,7 +9,7 @@ entry_point: src/systems/physics.ts
 
 files[4]{path,purpose}:
   src/systems/physics.ts,physics update — world-space decompose + drag + thrust + recompose
-  src/systems/collision.ts,polygon boundary enforcement + edge-normal wall response
+  src/systems/collision.ts,polygon boundary enforcement + wall response + boat-to-boat collision
   src/entity.ts,boat entity factory with tuned physics defaults
   src/debug.ts,runtime tuning panel with presets (yacht/speedboat/dinghy/tugboat)
 ```
@@ -22,6 +22,7 @@ files[4]{path,purpose}:
 - Thrust: `forwardSpeed += motorVoltage * thrustForce * dt`
 - Steering scales with `min(1, |forwardSpeed| / turnSpeedReference)` — can't turn stationary
 - Collision: polygon-based wall response cancels wall-normal velocity, preserves tangential sliding with friction
+- Boat-to-boat collision: circle-based detection (radius 24), equal-mass impulse response with bounce (0.6), mild angular impulse from off-center hits (spin factor 0.08)
 
 ## Default Values (Yacht preset)
 

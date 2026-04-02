@@ -18,7 +18,7 @@ files[5]{path,purpose}:
 ## Design Notes
 
 - Two boats: P1 (red #e04040, WASD) and P2 (yellow #e0c040, Arrows), offset 50 units apart at start
-- Physics + polygon collision run independently for each boat each tick
+- Physics + polygon collision run independently for each boat each tick, then boat-to-boat collision resolves between them
 - Camera starts in fixed mode (frames both boats with dynamic zoom)
 - Render order: map → boats → bridges (boats pass under bridges)
 - HUD: P1 speed (red) + P2 speed (yellow), top-right
