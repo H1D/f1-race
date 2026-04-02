@@ -389,12 +389,16 @@ export class RacingState implements GameState {
     // Flood overlay in screen space (bottom → top)
     renderFloodScreen(ctx, this.flood, w, h);
 
-    // Attributes float on top of the flood water
-    if (this.flood.waterLevel > 0.05 && this.flood.affectObjects) {
+    // During flood: re-render boats + attributes on top of the water overlay
+    if (this.flood.waterLevel > 0.05) {
       ctx.save();
-      // Re-apply camera transform so attributes render in world space on top of flood
       applyCameraTransform(ctx, this.camera, w, h);
-      renderFloodedAttributes(ctx, this.map, this.flood);
+      this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
+      this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
+      renderBridges(ctx, this.map);
+      if (this.flood.affectObjects) {
+        renderFloodedAttributes(ctx, this.map, this.flood);
+      }
       ctx.restore();
     }
 
