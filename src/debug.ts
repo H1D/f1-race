@@ -1,4 +1,4 @@
-import type { BoatPhysicsComponent, CameraState, Entity } from "./types";
+import type { BoatPhysicsComponent, CameraState } from "./types";
 
 interface Slider {
   key: keyof BoatPhysicsComponent;
@@ -77,6 +77,71 @@ const sliders: Slider[] = [
   { key: "maxSpeed", label: "Max Speed", min: 2, max: 40, step: 1 },
 ];
 
+// === Reusable UI helpers ===
+
+export function createCollapsiblePanel(
+  title: string,
+  color: string,
+  open = true,
+): { wrapper: HTMLElement; body: HTMLElement } {
+  const wrapper = document.createElement("div");
+  wrapper.className = "dbg-panel";
+
+  const header = document.createElement("div");
+  header.className = "dbg-panel-header";
+  header.style.color = color;
+
+  const arrow = document.createElement("span");
+  arrow.className = "dbg-arrow";
+  arrow.textContent = open ? "▾" : "▸";
+
+  header.appendChild(arrow);
+  header.appendChild(document.createTextNode(` ${title}`));
+
+  const body = document.createElement("div");
+  body.className = "dbg-panel-body";
+  body.style.display = open ? "block" : "none";
+
+  header.addEventListener("click", () => {
+    const isOpen = body.style.display !== "none";
+    body.style.display = isOpen ? "none" : "block";
+    arrow.textContent = isOpen ? "▸" : "▾";
+  });
+
+  wrapper.append(header, body);
+  return { wrapper, body };
+}
+
+export function createTabBar(
+  tabs: { label: string; content: HTMLElement }[],
+): HTMLElement {
+  const container = document.createElement("div");
+
+  const bar = document.createElement("div");
+  bar.className = "dbg-tab-bar";
+
+  tabs.forEach((tab, i) => {
+    const btn = document.createElement("button");
+    btn.className = `dbg-tab-btn${i === 0 ? " active" : ""}`;
+    btn.textContent = tab.label;
+    btn.addEventListener("click", () => {
+      bar.querySelectorAll(".dbg-tab-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      tabs.forEach((t, j) => {
+        t.content.style.display = j === i ? "block" : "none";
+      });
+    });
+    bar.appendChild(btn);
+    tab.content.style.display = i === 0 ? "block" : "none";
+  });
+
+  container.appendChild(bar);
+  for (const t of tabs) container.appendChild(t.content);
+  return container;
+}
+
+// === Main debug menu ===
+
 export function createDebugMenu(
   boat1Physics: BoatPhysicsComponent,
   camera?: CameraState,
@@ -84,45 +149,74 @@ export function createDebugMenu(
 ): HTMLElement {
   const panel = document.createElement("div");
   panel.id = "debug-panel";
-  panel.innerHTML = `
-    <style>
-      #debug-panel {
-        position: fixed; top: 10px; right: 10px;
-        background: rgba(0,0,0,0.8); color: #eee;
-        padding: 12px 16px; border-radius: 8px;
-        font: 12px/1.6 monospace; min-width: 240px;
-        max-height: 90vh; overflow-y: auto;
-        user-select: none; z-index: 100;
-      }
-      #debug-panel h3 { margin: 0 0 8px; font-size: 13px; color: #f88; }
-      #debug-panel .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
-      #debug-panel label { flex: 1; white-space: nowrap; }
-      #debug-panel input[type=range] { width: 90px; }
-      #debug-panel .val { width: 42px; text-align: right; color: #8cf; }
-      #debug-toggle {
-        position: fixed; top: 10px; right: 10px;
-        background: rgba(0,0,0,0.6); color: #f88; border: none;
-        padding: 6px 10px; border-radius: 6px; cursor: pointer;
-        font: 12px monospace; z-index: 101;
-      }
-      #debug-panel .boat-tab { opacity: 0.5; }
-      #debug-panel .boat-tab.active { opacity: 1; border-color: #8cf; }
-    </style>
-  `;
+  panel.innerHTML = `<style>
+    #debug-panel {
+      position: fixed; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.85); color: #eee;
+      padding: 12px 16px; border-radius: 8px;
+      font: 12px/1.6 monospace; min-width: 260px;
+      user-select: none; z-index: 100;
+      max-height: calc(100vh - 20px); overflow-y: auto;
+    }
+    #debug-panel::-webkit-scrollbar { width: 4px; }
+    #debug-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+    #debug-toggle {
+      position: fixed; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.6); color: #f88; border: none;
+      padding: 6px 10px; border-radius: 6px; cursor: pointer;
+      font: 12px monospace; z-index: 101;
+    }
+    .dbg-panel { margin-bottom: 2px; }
+    .dbg-panel + .dbg-panel { border-top: 1px solid #333; }
+    .dbg-panel-header {
+      cursor: pointer; padding: 5px 0; font-size: 12px; font-weight: bold;
+      letter-spacing: 1px; user-select: none;
+    }
+    .dbg-panel-header:hover { opacity: 0.8; }
+    .dbg-arrow { display: inline-block; width: 14px; }
+    .dbg-panel-body { padding: 2px 0 8px; }
+    .dbg-tab-bar { display: flex; gap: 2px; margin: 6px 0 0; }
+    .dbg-tab-btn {
+      background: #222; color: #888; border: 1px solid #444;
+      padding: 3px 8px; border-radius: 4px 4px 0 0; cursor: pointer;
+      font: 11px monospace; border-bottom: none;
+    }
+    .dbg-tab-btn:hover { color: #ccc; }
+    .dbg-tab-btn.active { background: #333; color: #eee; border-color: #666; }
+    .dbg-tab-content { border-top: 1px solid #444; padding: 6px 0; }
+    #debug-panel .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    #debug-panel label { flex: 1; white-space: nowrap; }
+    #debug-panel input[type=range] { width: 90px; }
+    #debug-panel .val { width: 42px; text-align: right; color: #8cf; }
+    .pd-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    .pd-row label { flex: 1; white-space: nowrap; }
+    .pd-row input[type=range] { width: 90px; }
+    .pd-val { width: 42px; text-align: right; color: #8fc; }
+    .pd-btn {
+      background: #333; color: #eee; border: 1px solid #555;
+      padding: 3px 8px; border-radius: 4px; cursor: pointer; font: 11px monospace;
+    }
+    .pd-btn:hover { background: #555; }
+    .pd-btn.active { background: #264; border-color: #8f8; }
+    .pd-info { color: #888; font-size: 11px; margin: 2px 0; font-family: monospace; }
+    .pd-effect { color: #8cf; font-size: 11px; font-family: monospace; }
+  </style>`;
 
-  const btnStyle = "background:#333;color:#eee;border:1px solid #555;padding:3px 8px;border-radius:4px;cursor:pointer;font:11px monospace;";
+  const btnStyle =
+    "background:#333;color:#eee;border:1px solid #555;padding:3px 8px;border-radius:4px;cursor:pointer;font:11px monospace;";
 
-  // Camera mode toggle
+  // === BOAT collapsible panel ===
+  const { wrapper: boatPanel, body: boatBody } = createCollapsiblePanel("BOAT", "#f88");
+
+  // Camera mode toggle (from upstream camera feature)
   if (camera) {
-    const camSection = document.createElement("div");
-    camSection.style.cssText = "margin-bottom:10px;";
-
-    const camLabel = document.createElement("h3");
-    camLabel.textContent = "camera";
-    camSection.appendChild(camLabel);
+    const camHeader = document.createElement("div");
+    camHeader.style.cssText = "color:#aaa;font-size:11px;margin-bottom:4px;";
+    camHeader.textContent = "camera";
+    boatBody.appendChild(camHeader);
 
     const camRow = document.createElement("div");
-    camRow.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
+    camRow.style.cssText = "display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;";
 
     const modes: { label: string; apply: () => void }[] = [
       {
@@ -131,10 +225,10 @@ export function createDebugMenu(
           camera.followTarget = null;
         },
       },
-      ...camera.entities.map((entity, i) => ({
+      ...camera.entities.map((_, i) => ({
         label: `Follow P${i + 1}`,
         apply: () => {
-          camera.followTarget = entity;
+          camera.followTarget = camera.entities[i]!;
         },
       })),
     ];
@@ -147,11 +241,10 @@ export function createDebugMenu(
       camRow.appendChild(btn);
     }
 
-    camSection.appendChild(camRow);
-    panel.appendChild(camSection);
+    boatBody.appendChild(camRow);
   }
 
-  // Boat physics sections
+  // Boat physics sections (supports 1 or 2 boats)
   const boats: { label: string; color: string; params: BoatPhysicsComponent }[] = [
     { label: "boat 1 (WASD)", color: "#e04040", params: boat1Physics },
   ];
@@ -161,11 +254,13 @@ export function createDebugMenu(
 
   for (const boat of boats) {
     const section = document.createElement("div");
-    section.style.cssText = "border-top:1px solid #444;padding-top:8px;margin-top:8px;";
+    if (boats.length > 1) {
+      section.style.cssText = "border-top:1px solid #444;padding-top:6px;margin-top:6px;";
+    }
 
-    const header = document.createElement("h3");
+    const header = document.createElement("div");
+    header.style.cssText = `color:${boat.color};font-size:12px;font-weight:bold;margin-bottom:4px;`;
     header.textContent = boat.label;
-    header.style.color = boat.color;
     section.appendChild(header);
 
     // Presets
@@ -233,8 +328,10 @@ export function createDebugMenu(
     });
     section.appendChild(reset);
 
-    panel.appendChild(section);
+    boatBody.appendChild(section);
   }
+
+  panel.appendChild(boatPanel);
 
   // Toggle visibility with backtick key
   let visible = false;

@@ -1,7 +1,7 @@
 # Decisions
 
 ```toon
-decisions[7]{id,date,title,status}:
+decisions[10]{id,date,title,status}:
   001,2026-04-02,Fixed timestep game loop,accepted
   002,2026-04-02,ECS-lite over class hierarchy,accepted
   003,2026-04-02,Anisotropic drag for boat physics,accepted
@@ -9,6 +9,9 @@ decisions[7]{id,date,title,status}:
   005,2026-04-02,World-space velocity over local-space,accepted
   006,2026-04-02,Two-player shared-screen with split controls,accepted
   007,2026-04-02,Dual-mode camera (follow vs fixed),accepted
+  008,2026-04-02,Data-driven powerup definitions,accepted
+  009,2026-04-02,Multiplier-based effect reversal,accepted
+  010,2026-04-02,Orchestrator-level event logging,accepted
 ```
 
 ## ADR-001: Fixed timestep game loop
@@ -78,3 +81,33 @@ decisions[7]{id,date,title,status}:
 **Context**: With two boats, a single follow camera can't show both players. Need a way to frame both or focus on one.
 **Decision**: Two camera modes — **Follow** (tracks one entity with look-ahead + rotation) and **Fixed** (centers on midpoint of all entities, dynamic zoom, no rotation). Toggled via debug panel. Smooth 500ms transition between modes.
 **Consequences**: Fixed mode is default for two-player gameplay. Follow mode available for spectating one player. Dynamic zoom keeps both boats in frame. Transition uses fast lerp (0.25) easing to normal (0.08) to avoid jarring snaps.
+
+---
+
+## ADR-008: Data-driven powerup definitions
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: The game needs many powerup types with diverse effects. Adding a powerup shouldn't require modifying framework code.
+**Decision**: Each powerup is a `PowerupDefinition` object registered in a central map. Definition contains spawn config, stacking rules, and three lifecycle hooks (`onApply`/`onTick`/`onExpire`) that mutate entity data directly.
+**Consequences**: Adding a powerup = one definition file + one import in registry. Framework code (spawn, collision, effects) is generic and never changes per-powerup. Stacking rules (refresh/stack/replace/ignore) are per-definition.
+
+---
+
+## ADR-009: Multiplier-based effect reversal
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: Multiple effects can modify the same physics field (e.g., `maxSpeed`). Storing/restoring absolute snapshots breaks when effects expire out of order.
+**Decision**: Effects store multipliers in their state bag (`state.speedMult = 1.5`), then divide on expire (`maxSpeed /= state.speedMult`). This is commutative — order-independent cleanup.
+**Consequences**: Any number of effects can modify the same field simultaneously. No need for a "base values" system. Each effect is self-contained.
+
+---
+
+## ADR-010: Orchestrator-level event logging
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: Need a game event log for debugging and game feel, but systems should stay pure (no logging dependency).
+**Decision**: `RacingState` observes system outputs (PickupEvent[], effect count diffs, flood state changes) and writes to a `GameLog` data structure. Log renders on canvas with fade/pinned modes.
+**Consequences**: Systems remain pure functions with no side effects. Log categories and messages are controlled at the orchestrator level. Debug panel provides log toggle and clear.

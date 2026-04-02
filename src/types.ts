@@ -42,6 +42,51 @@ export interface RenderComponent {
   color: string;
 }
 
+// === Powerup components ===
+export interface PowerupPickupComponent {
+  powerupId: string;
+  radius: number;
+  bobPhase: number;
+}
+
+export interface ActiveEffect {
+  powerupId: string;
+  remainingTime: number; // seconds, -1 for instant/condition-based
+  sourceEntityId: number;
+  state: Record<string, number>; // mutable bag for effect to store/restore values
+}
+
+export interface ActiveEffectsComponent {
+  effects: ActiveEffect[];
+}
+
+export interface LifetimeComponent {
+  remaining: number; // seconds
+  fadeStart: number; // seconds before death to start fading
+}
+
+export interface ZoneComponent {
+  radius: number;
+  effectId: string;
+  ownerId: number;
+  affectsOwner: boolean;
+}
+
+export interface ColliderComponent {
+  radius: number;
+  layer: number; // bitmask
+}
+
+export interface MarkedForRemovalComponent {
+  reason: string;
+}
+
+// === Collision layers (bitmask) ===
+export const LAYER_BOAT = 1;
+export const LAYER_PICKUP = 2;
+export const LAYER_OBSTACLE = 4;
+export const LAYER_ZONE = 8;
+
 // === Entity ===
 export interface Entity {
   id: number;
@@ -51,6 +96,13 @@ export interface Entity {
   boatPhysics?: BoatPhysicsComponent;
   render?: RenderComponent;
   tags: Set<string>;
+  // Powerup components
+  powerupPickup?: PowerupPickupComponent;
+  activeEffects?: ActiveEffectsComponent;
+  lifetime?: LifetimeComponent;
+  zone?: ZoneComponent;
+  collider?: ColliderComponent;
+  markedForRemoval?: MarkedForRemovalComponent;
 }
 
 // === Input snapshot ===
@@ -103,4 +155,68 @@ export interface TrackBounds {
   startX: number;
   startY: number;
   startAngle: number;
+}
+
+// === Powerup definition (data-driven registry) ===
+export interface PowerupDefinition {
+  id: string;
+  name: string;
+  category: "canal" | "flood";
+  rarity: number; // 0..1 spawn weight
+
+  spawn: {
+    radius: number;
+    color: string;
+    icon: string; // emoji or sprite key
+  };
+
+  effect: {
+    type: "instant" | "duration" | "spawned";
+    duration: number; // seconds (0 for instant)
+    stacking: "refresh" | "stack" | "replace" | "ignore";
+    maxStacks: number;
+
+    onApply: (target: Entity, source: Entity, state: Record<string, number>) => void;
+    onTick?: (target: Entity, state: Record<string, number>, dt: number) => void;
+    onExpire: (target: Entity, state: Record<string, number>) => void;
+    onSpawn?: (source: Entity) => Entity[];
+  };
+
+  visual?: {
+    trailEffect?: string;
+    boatTint?: string;
+    hudIcon: string;
+  };
+
+  /** Optional named numeric knobs exposed in the debug panel. */
+  tunables?: Record<string, { value: number; min: number; max: number; step: number }>;
+}
+
+// === Powerup pickup event ===
+export interface PickupEvent {
+  boatEntityId: number;
+  pickupEntityId: number;
+  powerupId: string;
+}
+
+// === Spawn system state ===
+export interface SpawnPoint {
+  pos: Vec2;
+  zoneType: "canal" | "street";
+  distanceFromCanal: number;
+  active: boolean;
+}
+
+export interface SpawnManagerState {
+  timeSinceLastSpawn: number;
+  spawnInterval: number;
+  maxPickupsInWorld: number;
+  spawnPoints: SpawnPoint[];
+}
+
+// === Flood state ===
+export interface FloodState {
+  active: boolean;
+  level: number; // 0..1
+  timeRemaining: number;
 }

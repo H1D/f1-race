@@ -17,15 +17,23 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[8]{module,depends_on}:
+modules[16]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
-  racing-state,entity + track + physics + collision + camera + boat-render + background-render + debug
+  racing-state,entity + entity-manager + track + physics + collision + camera + boat-render + background-render + debug + powerup-spawn + powerup-collision + powerup-effects + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry
   physics,types (Entity + InputState)
   collision,types (Entity + TrackBounds)
   camera,types (CameraState + Entity)
   boat-render,types (Entity) + boat.png sprite
   background-render,types (TrackBounds)
   debug,types (BoatPhysicsComponent + CameraState)
+  entity-manager,types (Entity)
+  powerup-spawn,types + entity (createPickupEntity)
+  powerup-collision,types (Entity + PickupEvent)
+  powerup-effects,types (Entity + PickupEvent + PowerupDefinition)
+  powerup-render,types (Entity + PowerupDefinition)
+  zone-effects,types (Entity + PowerupDefinition)
+  entity-lifetime,types (Entity)
+  registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag
 ```
 
 ## Assets
