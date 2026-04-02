@@ -7,6 +7,7 @@ await Bun.build({
   sourcemap: "inline",
 });
 cpSync("public/index.html", "dist/index.html");
+cpSync("src/boat/boat.png", "dist/boat.png");
 
 Bun.serve({
   port: 3000,
