@@ -20,10 +20,11 @@ files[5]{path,purpose}:
 - Two boats: P1 (red #e04040, WASD) and P2 (yellow #e0c040, Arrows), offset 50 units apart at start
 - Physics + polygon collision run independently for each boat each tick, then boat-to-boat collision resolves between them
 - **5-lap race**: boats must cross 3 checkpoints in order per lap, then the finish line to complete a lap. First to 5 laps wins
-- **Checkpoints**: `Gate` type (two endpoints), stored in `MapData.checkpoints[]`. Crossing detected via `segmentsCross()` on boat prev→curr path. Rendered as orange marker flags on both banks
+- **Checkpoints**: `Gate` type (two endpoints), stored in `MapData.checkpoints[]`. Crossing detected via `segmentsCross()` + `nearGate()` proximity check (within 1.5× gate length). Rendered as orange marker flags on both banks
+- **Checkpoint penalties**: +3s penalty per missed checkpoint. Toast shows "Checkpoint N missed! +3s". Penalty tracked per player (`p1PenaltyTime`/`p2PenaltyTime`)
 - **Finish line**: checkered black/white pattern spanning full river width. `MapData.finishLine` (Gate type). Only counts after all checkpoints passed
-- **Race timer**: starts after 2s grace period, displays `M:SS.ms` at bottom center. Freezes on win
-- **Win screen**: dark overlay fades in, shows winner name in their color + finishing time + "RACE FINISHED". Press SPACE to restart (new RacingState)
+- **Race timer**: starts after 2s grace period, displays `M:SS.ms` at bottom center. Freezes on win. Total time = race time + penalty time
+- **Win screen**: dark overlay fades in, shows winner name in their color + total time. If penalty > 0, shows breakdown: "Race: M:SS.ms + Penalty: M:SS.ms". Press SPACE to restart
 - **Lap HUD**: top center shows laps remaining per player in large bold text
 - Camera starts in fixed mode (frames both boats with dynamic zoom)
 - Render order: map → checkpoint flags → finish line → boats → bridges (boats pass under bridges)
@@ -45,7 +46,8 @@ files[5]{path,purpose}:
 
 - `applyCameraTransform` calls `ctx.save()` — matching `ctx.restore()` in `RacingState.render()`
 - 2-second grace period prevents finish line trigger at race start
-- Checkpoint progress resets to 0 after each completed lap
+- Checkpoint progress resets to 0 after each completed lap; penalty time persists across laps
+- `nearGate()` proximity filter prevents false positives from distant segment intersections
 - Restart listener (`keydown` for Space) is added after 2s win delay and cleaned up in `exit()`
 - Menu state waits for space release before allowing transition
 - Debug panel + editor button are HTML overlays, removed in `exit()`
