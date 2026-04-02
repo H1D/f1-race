@@ -41,7 +41,7 @@ export function createDefaultMap(): MapData {
     attributes: [
       // Outer land (outside outline)
       { id: 1, type: "albert-heijn", position: { x: 1150, y: 0 } },
-      { id: 2, type: "effendi", position: { x: -700, y: -400 } },
+      { id: 2, type: "effendi", position: { x: -1050, y: -500 } },
       // Island (inside island)
       { id: 3, type: "herring-kiosk", position: { x: 400, y: -300 } },
       { id: 4, type: "bike-shop", position: { x: -200, y: 100 } },
