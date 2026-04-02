@@ -16,19 +16,35 @@ import { LAYER_BOAT } from "../types";
 import { createBoatEntity } from "../entity";
 import { getCurrentMap } from "../map/map-data";
 import { updatePhysics } from "../systems/physics";
-import { resolveMapCollisions, resolveBoatCollision } from "../systems/collision";
+import {
+  resolveMapCollisions,
+  resolveBoatCollision,
+} from "../systems/collision";
 import { segmentsCross } from "../map/geometry";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
 import { renderMap, renderBridges } from "../map/map-renderer";
 import { createDebugMenu, debugSettings } from "../debug";
 import { createEntityManager, type EntityManager } from "../entity-manager";
-import { createSpawnManagerState, updatePowerupSpawning } from "../systems/powerup-spawn";
+import {
+  createSpawnManagerState,
+  updatePowerupSpawning,
+} from "../systems/powerup-spawn";
 import { detectPowerupPickups } from "../systems/powerup-collision";
-import { applyPickupEvents, tickActiveEffects, processExpirations } from "../systems/powerup-effects";
+import {
+  applyPickupEvents,
+  tickActiveEffects,
+  processExpirations,
+} from "../systems/powerup-effects";
 import { tickLifetimes } from "../systems/entity-lifetime";
 import { processZoneEffects } from "../systems/zone-effects";
-import { renderPickups, renderZones, renderObstacles, renderActiveEffectVisuals, renderEffectsHUD } from "../systems/powerup-render";
+import {
+  renderPickups,
+  renderZones,
+  renderObstacles,
+  renderActiveEffectVisuals,
+  renderEffectsHUD,
+} from "../systems/powerup-render";
 import { loadPowerupDefinitions } from "../powerups/registry";
 import { createPowerupDebugSection } from "../powerup-debug";
 import { createGameLog, renderGameLog, type GameLog } from "../game-log";
@@ -224,8 +240,16 @@ export class RacingState implements GameState {
     document.getElementById("flood-toggle-btn")?.remove();
   }
 
-  private crossesGate(boat: Entity, gate: { a: { x: number; y: number }; b: { x: number; y: number } }): boolean {
-    return segmentsCross(boat.transform.prevPos, boat.transform.pos, gate.a, gate.b);
+  private crossesGate(
+    boat: Entity,
+    gate: { a: { x: number; y: number }; b: { x: number; y: number } },
+  ): boolean {
+    return segmentsCross(
+      boat.transform.prevPos,
+      boat.transform.pos,
+      gate.a,
+      gate.b,
+    );
   }
 
   private updateCheckpoints(boat: Entity, nextCheckpoint: number): number {
@@ -240,7 +264,10 @@ export class RacingState implements GameState {
   private hasCompletedLap(boat: Entity, nextCheckpoint: number): boolean {
     const cps = this.map.checkpoints;
     if (!cps || cps.length === 0) return true; // no checkpoints = always valid
-    return nextCheckpoint >= cps.length && this.crossesGate(boat, this.map.finishLine);
+    return (
+      nextCheckpoint >= cps.length &&
+      this.crossesGate(boat, this.map.finishLine)
+    );
   }
 
   update(dt: number, input: DualInput) {
@@ -274,8 +301,10 @@ export class RacingState implements GameState {
     // Sync flood state for powerup system
     this.floodState.active = flooded;
     this.floodState.level = this.flood.waterLevel;
-    this.floodState.timeRemaining = this.flood.state === "flooding"
-      ? Math.max(0, this.flood.floodDuration - this.flood.timer) : 0;
+    this.floodState.timeRemaining =
+      this.flood.state === "flooding"
+        ? Math.max(0, this.flood.floodDuration - this.flood.timer)
+        : 0;
 
     // Check penalties when flood recedes
     checkFloodPenalty(this.player1, this.map, this.flood, this.penalty1);
@@ -315,7 +344,7 @@ export class RacingState implements GameState {
       this.collisionResult.normalY = dy / d;
       this.collisionResult.impactSpeed = Math.sqrt(
         (this.player1.velocity.x - this.player2.velocity.x) ** 2 +
-        (this.player1.velocity.y - this.player2.velocity.y) ** 2,
+          (this.player1.velocity.y - this.player2.velocity.y) ** 2,
       );
       emitCollisionSparks(this.particles, this.collisionResult);
     } else {
@@ -326,8 +355,14 @@ export class RacingState implements GameState {
 
     // Checkpoint + finish line tracking
     if (this.raceStartGrace <= 0 && !this.winner) {
-      this.p1NextCheckpoint = this.updateCheckpoints(this.player1, this.p1NextCheckpoint);
-      this.p2NextCheckpoint = this.updateCheckpoints(this.player2, this.p2NextCheckpoint);
+      this.p1NextCheckpoint = this.updateCheckpoints(
+        this.player1,
+        this.p1NextCheckpoint,
+      );
+      this.p2NextCheckpoint = this.updateCheckpoints(
+        this.player2,
+        this.p2NextCheckpoint,
+      );
 
       if (this.hasCompletedLap(this.player1, this.p1NextCheckpoint)) {
         this.p1Laps++;
@@ -341,7 +376,10 @@ export class RacingState implements GameState {
           this.gameLog.log(`P1 lap ${this.p1Laps}/${this.totalLaps}`, "system");
         }
       }
-      if (!this.winner && this.hasCompletedLap(this.player2, this.p2NextCheckpoint)) {
+      if (
+        !this.winner &&
+        this.hasCompletedLap(this.player2, this.p2NextCheckpoint)
+      ) {
         this.p2Laps++;
         this.p2NextCheckpoint = 0;
         if (this.p2Laps >= this.totalLaps) {
@@ -358,14 +396,21 @@ export class RacingState implements GameState {
     // Powerup spawning
     const trackBounds = trackBoundsFromMap(this.map);
     const newPickups = updatePowerupSpawning(
-      this.entityManager.entities, trackBounds, this.floodState,
-      this.powerupDefs, dt, this.spawnState,
+      this.entityManager.entities,
+      trackBounds,
+      this.floodState,
+      this.powerupDefs,
+      dt,
+      this.spawnState,
     );
     this.entityManager.addMany(newPickups);
     for (const pickup of newPickups) {
       const def = this.powerupDefs.get(pickup.powerupPickup!.powerupId);
       if (def) {
-        this.gameLog.log(`${def.visual?.hudIcon ?? "?"} ${def.name} spawned`, "spawn");
+        this.gameLog.log(
+          `${def.visual?.hudIcon ?? "?"} ${def.name} spawned`,
+          "spawn",
+        );
       }
     }
 
@@ -377,13 +422,18 @@ export class RacingState implements GameState {
     for (const event of pickupEvents) {
       const def = this.powerupDefs.get(event.powerupId);
       if (def) {
-        this.gameLog.log(`Player picked up ${def.visual?.hudIcon ?? "?"} ${def.name}`, "pickup");
+        this.gameLog.log(
+          `Player picked up ${def.visual?.hudIcon ?? "?"} ${def.name}`,
+          "pickup",
+        );
       }
     }
 
     // Apply pickup effects
     const spawnedEntities = applyPickupEvents(
-      pickupEvents, this.entityManager.entities, this.powerupDefs,
+      pickupEvents,
+      this.entityManager.entities,
+      this.powerupDefs,
     );
     this.entityManager.addMany(spawnedEntities);
 
@@ -403,7 +453,10 @@ export class RacingState implements GameState {
       if (!effectsAfter.has(id)) {
         const def = this.powerupDefs.get(id);
         if (def) {
-          this.gameLog.log(`${def.visual?.hudIcon ?? "?"} ${def.name} expired`, "effect");
+          this.gameLog.log(
+            `${def.visual?.hudIcon ?? "?"} ${def.name} expired`,
+            "effect",
+          );
         }
       }
     }
@@ -464,6 +517,11 @@ export class RacingState implements GameState {
     if (debugSettings.showBoatCollision) {
       this.renderCollisionCircle(ctx, this.player1, alpha, "#e04040");
       this.renderCollisionCircle(ctx, this.player2, alpha, "#e0c040");
+    }
+
+    if (debugSettings.showBoatVelocity) {
+      this.renderVelocityArrow(ctx, this.player1, alpha, "#e04040");
+      this.renderVelocityArrow(ctx, this.player2, alpha, "#e0c040");
     }
 
     renderBridges(ctx, this.map);
@@ -558,16 +616,26 @@ export class RacingState implements GameState {
     ctx.font = "14px monospace";
     ctx.textAlign = "right";
 
-    ctx.fillStyle = this.penalty1.active ? "rgba(255,80,80,0.9)" : "rgba(224,64,64,0.6)";
+    ctx.fillStyle = this.penalty1.active
+      ? "rgba(255,80,80,0.9)"
+      : "rgba(224,64,64,0.6)";
     ctx.fillText(
-      this.penalty1.active ? `P1: PENALTY ${this.penalty1.remaining.toFixed(1)}s` : `P1: ${s1.toFixed(0)}`,
-      w - 20, 30,
+      this.penalty1.active
+        ? `P1: PENALTY ${this.penalty1.remaining.toFixed(1)}s`
+        : `P1: ${s1.toFixed(0)}`,
+      w - 20,
+      30,
     );
 
-    ctx.fillStyle = this.penalty2.active ? "rgba(255,200,80,0.9)" : "rgba(224,192,64,0.6)";
+    ctx.fillStyle = this.penalty2.active
+      ? "rgba(255,200,80,0.9)"
+      : "rgba(224,192,64,0.6)";
     ctx.fillText(
-      this.penalty2.active ? `P2: PENALTY ${this.penalty2.remaining.toFixed(1)}s` : `P2: ${s2.toFixed(0)}`,
-      w - 20, 50,
+      this.penalty2.active
+        ? `P2: PENALTY ${this.penalty2.remaining.toFixed(1)}s`
+        : `P2: ${s2.toFixed(0)}`,
+      w - 20,
+      50,
     );
 
     // Lap counter (top center)
@@ -578,7 +646,11 @@ export class RacingState implements GameState {
     ctx.fillStyle = "rgba(224,64,64,0.6)";
     ctx.fillText(`P1: ${p1Left} lap${p1Left !== 1 ? "s" : ""} left`, w / 2, 70);
     ctx.fillStyle = "rgba(224,192,64,0.6)";
-    ctx.fillText(`P2: ${p2Left} lap${p2Left !== 1 ? "s" : ""} left`, w / 2, 140);
+    ctx.fillText(
+      `P2: ${p2Left} lap${p2Left !== 1 ? "s" : ""} left`,
+      w / 2,
+      140,
+    );
   }
 
   private renderBoatWithPenalty(
@@ -588,7 +660,7 @@ export class RacingState implements GameState {
     penalty: BoatPenalty,
   ) {
     if (penalty.active) {
-      const flash = Math.sin(Date.now() / 125 * Math.PI) > 0;
+      const flash = Math.sin((Date.now() / 125) * Math.PI) > 0;
       if (!flash) return;
       ctx.globalAlpha = 0.5;
       renderBoat(ctx, boat, alpha);
@@ -612,6 +684,47 @@ export class RacingState implements GameState {
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  private renderVelocityArrow(
+    ctx: CanvasRenderingContext2D,
+    boat: Entity,
+    alpha: number,
+    color: string,
+  ) {
+    const tf = boat.transform;
+    const x = tf.prevPos.x + (tf.pos.x - tf.prevPos.x) * alpha;
+    const y = tf.prevPos.y + (tf.pos.y - tf.prevPos.y) * alpha;
+    const vel = boat.velocity;
+    const scale = 8;
+    const endX = x + vel.x * scale;
+    const endY = y + vel.y * scale;
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.7;
+    ctx.stroke();
+
+    // Arrowhead
+    const angle = Math.atan2(vel.y, vel.x);
+    const headLen = 6;
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(
+      endX - Math.cos(angle - 0.4) * headLen,
+      endY - Math.sin(angle - 0.4) * headLen,
+    );
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(
+      endX - Math.cos(angle + 0.4) * headLen,
+      endY - Math.sin(angle + 0.4) * headLen,
+    );
     ctx.stroke();
     ctx.globalAlpha = 1;
   }

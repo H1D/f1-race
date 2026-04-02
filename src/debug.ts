@@ -2,6 +2,7 @@ import type { BoatPhysicsComponent, CameraState } from "./types";
 
 export const debugSettings = {
   showBoatCollision: false,
+  showBoatVelocity: false,
 };
 
 interface Slider {
@@ -74,10 +75,22 @@ const presets: Preset[] = [yacht, speedboat, dinghy, tugboat];
 const sliders: Slider[] = [
   { key: "forwardDrag", label: "Forward Drag", min: 0, max: 0.2, step: 0.005 },
   { key: "lateralDrag", label: "Lateral Drag", min: 0, max: 2, step: 0.05 },
-  { key: "angularDamping", label: "Angular Damping", min: 0, max: 2, step: 0.05 },
+  {
+    key: "angularDamping",
+    label: "Angular Damping",
+    min: 0,
+    max: 2,
+    step: 0.05,
+  },
   { key: "thrustForce", label: "Thrust", min: 1, max: 30, step: 0.5 },
   { key: "turnTorque", label: "Turn Torque", min: 0.5, max: 15, step: 0.5 },
-  { key: "turnSpeedReference", label: "Turn Speed Ref", min: 0.5, max: 10, step: 0.5 },
+  {
+    key: "turnSpeedReference",
+    label: "Turn Speed Ref",
+    min: 0.5,
+    max: 10,
+    step: 0.5,
+  },
   { key: "maxSpeed", label: "Max Speed", min: 2, max: 40, step: 1 },
 ];
 
@@ -129,7 +142,9 @@ export function createTabBar(
     btn.className = `dbg-tab-btn${i === 0 ? " active" : ""}`;
     btn.textContent = tab.label;
     btn.addEventListener("click", () => {
-      bar.querySelectorAll(".dbg-tab-btn").forEach((b) => b.classList.remove("active"));
+      bar
+        .querySelectorAll(".dbg-tab-btn")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       tabs.forEach((t, j) => {
         t.content.style.display = j === i ? "block" : "none";
@@ -210,7 +225,10 @@ export function createDebugMenu(
     "background:#333;color:#eee;border:1px solid #555;padding:3px 8px;border-radius:4px;cursor:pointer;font:11px monospace;";
 
   // === BOAT collapsible panel ===
-  const { wrapper: boatPanel, body: boatBody } = createCollapsiblePanel("BOAT", "#f88");
+  const { wrapper: boatPanel, body: boatBody } = createCollapsiblePanel(
+    "BOAT",
+    "#f88",
+  );
 
   // Camera mode toggle (from upstream camera feature)
   if (camera) {
@@ -220,7 +238,8 @@ export function createDebugMenu(
     boatBody.appendChild(camHeader);
 
     const camRow = document.createElement("div");
-    camRow.style.cssText = "display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;";
+    camRow.style.cssText =
+      "display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;";
 
     const modes: { label: string; apply: () => void }[] = [
       {
@@ -263,18 +282,40 @@ export function createDebugMenu(
   collRow.append(collLabel, collCheck);
   boatBody.appendChild(collRow);
 
+  // Velocity debug toggle
+  const velRow = document.createElement("div");
+  velRow.className = "row";
+  velRow.style.marginBottom = "8px";
+  const velLabel = document.createElement("label");
+  velLabel.textContent = "Show Velocity";
+  const velCheck = document.createElement("input");
+  velCheck.type = "checkbox";
+  velCheck.checked = debugSettings.showBoatVelocity;
+  velCheck.addEventListener("change", () => {
+    debugSettings.showBoatVelocity = velCheck.checked;
+  });
+  velRow.append(velLabel, velCheck);
+  boatBody.appendChild(velRow);
+
   // Boat physics sections (supports 1 or 2 boats)
-  const boats: { label: string; color: string; params: BoatPhysicsComponent }[] = [
-    { label: "boat 1 (WASD)", color: "#e04040", params: boat1Physics },
-  ];
+  const boats: {
+    label: string;
+    color: string;
+    params: BoatPhysicsComponent;
+  }[] = [{ label: "boat 1 (WASD)", color: "#e04040", params: boat1Physics }];
   if (boat2Physics) {
-    boats.push({ label: "boat 2 (Arrows)", color: "#e0c040", params: boat2Physics });
+    boats.push({
+      label: "boat 2 (Arrows)",
+      color: "#e0c040",
+      params: boat2Physics,
+    });
   }
 
   for (const boat of boats) {
     const section = document.createElement("div");
     if (boats.length > 1) {
-      section.style.cssText = "border-top:1px solid #444;padding-top:6px;margin-top:6px;";
+      section.style.cssText =
+        "border-top:1px solid #444;padding-top:6px;margin-top:6px;";
     }
 
     const header = document.createElement("div");
@@ -284,7 +325,8 @@ export function createDebugMenu(
 
     // Presets
     const presetRow = document.createElement("div");
-    presetRow.style.cssText = "display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;";
+    presetRow.style.cssText =
+      "display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;";
 
     const sliderInputs: HTMLInputElement[] = [];
 
