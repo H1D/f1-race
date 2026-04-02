@@ -74,6 +74,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Camera | active | `src/systems/camera.ts` |
 | Track | wip | `src/track.ts`, `src/systems/background-render.ts` |
 | Input | active | `src/input.ts` |
+| Particles | active | `src/systems/particles.ts` |
 | Debug | active | `src/debug.ts` |
 
 ## Project Structure
@@ -83,6 +84,6 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | `src/` | Game source code |
 | `src/boat/` | Boat sprite (boat.png) + legacy standalone boat module |
 | `src/states/` | Game state implementations (menu, racing) |
-| `src/systems/` | ECS-style systems (physics, collision, camera, rendering) |
+| `src/systems/` | ECS-style systems (physics, collision, camera, rendering, particles) |
 | `public/` | Static HTML |
 | `dist/` | Build output |
