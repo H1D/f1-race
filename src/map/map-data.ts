@@ -4,91 +4,82 @@ import { pointInPolygon } from "./geometry";
 let currentMap: MapData | null = null;
 
 export function createDefaultMap(): MapData {
-  // Irregular river channel — bumpy outer and island for tricky racing
-  // Tricky river — S-bends, pinch points, wide sweeps, hairpin at the bottom
+  // Racing circuit: long straight, gentle curves, two wide sweeping bends
   const outline: Vec2[] = [
-    { x: 950, y: -100 },
-    { x: 900, y: -450 },
-    { x: 600, y: -700 },
-    { x: 150, y: -800 },
-    { x: -250, y: -680 },
-    { x: -550, y: -450 },
-    { x: -850, y: -550 },
-    { x: -1050, y: -250 },
-    { x: -950, y: 100 },
-    { x: -700, y: 300 },
-    { x: -850, y: 550 },
-    { x: -600, y: 750 },
-    { x: -150, y: 700 },
-    { x: 250, y: 550 },
-    { x: 500, y: 650 },
-    { x: 750, y: 450 },
-    { x: 850, y: 200 },
+    // Right straight
+    { x: 1000, y: -550 },
+    { x: 1000, y: 550 },
+    // Bottom curve
+    { x: 650, y: 800 },
+    { x: 200, y: 850 },
+    // Left side — two wide gentle bends
+    { x: -350, y: 650 },
+    { x: -850, y: 350 },
+    { x: -350, y: 50 },
+    { x: -900, y: -300 },
+    { x: -500, y: -550 },
+    // Top curve
+    { x: -100, y: -750 },
+    { x: 400, y: -750 },
+    { x: 750, y: -700 },
   ];
 
-  // Island: tighter, creates narrow chicanes and wide stretches
   const island: Vec2[] = [
-    { x: 700, y: -80 },
-    { x: 660, y: -330 },
-    { x: 420, y: -520 },
-    { x: 100, y: -580 },
-    { x: -180, y: -490 },
-    { x: -400, y: -320 },
-    { x: -620, y: -380 },
-    { x: -770, y: -150 },
-    { x: -700, y: 80 },
-    { x: -500, y: 200 },
-    { x: -600, y: 400 },
-    { x: -420, y: 550 },
-    { x: -100, y: 500 },
-    { x: 160, y: 380 },
-    { x: 350, y: 460 },
-    { x: 550, y: 320 },
-    { x: 630, y: 130 },
+    // Right straight
+    { x: 750, y: -480 },
+    { x: 750, y: 450 },
+    // Bottom curve
+    { x: 500, y: 580 },
+    { x: 200, y: 600 },
+    // Left side — matching gentle bends, wide channel
+    { x: -100, y: 440 },
+    { x: -400, y: 220 },
+    { x: -120, y: -30 },
+    { x: -440, y: -180 },
+    { x: -240, y: -380 },
+    // Top curve
+    { x: -50, y: -530 },
+    { x: 350, y: -530 },
+    { x: 600, y: -500 },
   ];
 
   return {
     outline,
     island,
     attributes: [
-      // On the outer land (outside the outline, away from water)
-      { id: 1, type: "albert-heijn", position: { x: -50, y: -900 } },
-      { id: 2, type: "effendi", position: { x: -1050, y: -100 } },
-      { id: 3, type: "doctor-falafel", position: { x: 500, y: 750 } },
-      // On the island (inside the island, away from water)
-      { id: 4, type: "herring-kiosk", position: { x: 0, y: -200 } },
-      { id: 5, type: "bike-shop", position: { x: -350, y: 50 } },
-      { id: 6, type: "cheese-shop", position: { x: 200, y: 200 } },
+      // Outer land (outside outline)
+      { id: 1, type: "albert-heijn", position: { x: 1150, y: 0 } },
+      { id: 2, type: "effendi", position: { x: -900, y: -400 } },
+      { id: 3, type: "doctor-falafel", position: { x: 200, y: 1000 } },
+      // Island (inside island)
+      { id: 4, type: "herring-kiosk", position: { x: 400, y: -300 } },
+      { id: 5, type: "bike-shop", position: { x: -200, y: 100 } },
+      { id: 6, type: "cheese-shop", position: { x: 500, y: 300 } },
     ],
     bridges: [
-      // Bridge: outer land (far outside outline) ↔ island (deep inside island)
-      // Top-right: outer land past outline → deep into island
-      { id: 1, start: { x: 1000, y: -180 }, end: { x: 550, y: -100 }, width: 26 },
-      // Left side: outer land past outline → deep into island
-      { id: 2, start: { x: -1000, y: -400 }, end: { x: -450, y: -250 }, width: 26 },
-      // Bottom: outer land past outline → deep into island
-      { id: 3, start: { x: -400, y: 780 }, end: { x: -200, y: 350 }, width: 26 },
+      // Across the straight (outer land ↔ island)
+      { id: 1, start: { x: 1080, y: 0 }, end: { x: 680, y: 0 }, width: 26 },
+      // Across the top curve
+      { id: 2, start: { x: 300, y: -800 }, end: { x: 250, y: -480 }, width: 26 },
+      // Across the bottom curve
+      { id: 3, start: { x: 400, y: 900 }, end: { x: 350, y: 560 }, width: 26 },
     ],
-    worldSize: 1300,
-    startPos: { x: 830, y: 100 },
-    startAngle: -Math.PI / 2,
-    // Checkpoints: gates around the track that must be crossed in order
-    // Track runs counterclockwise from start (top-right, heading up)
+    worldSize: 1400,
+    startPos: { x: 880, y: 0 },
+    startAngle: Math.PI / 2,
+    // Checkpoints: gates across the river that must be crossed in order
     checkpoints: [
-      // CP1: top area between outline[2](600,-700) and island[2](420,-520)
-      { a: { x: 600, y: -700 }, b: { x: 420, y: -520 } },
-      // CP2: left side between outline[8](-950,100) and island[8](-700,80)
-      { a: { x: -950, y: 100 }, b: { x: -700, y: 80 } },
-      // CP3: bottom between outline[12](-150,700) and island[12](-100,500)
-      { a: { x: -150, y: 700 }, b: { x: -100, y: 500 } },
+      // CP1: top area
+      { a: { x: 400, y: -750 }, b: { x: 350, y: -530 } },
+      // CP2: left side
+      { a: { x: -850, y: 350 }, b: { x: -400, y: 220 } },
+      // CP3: bottom
+      { a: { x: 200, y: 850 }, b: { x: 200, y: 600 } },
     ],
-    // Finish line spans the full river width at the start area
-    // Outer bank edge: between outline[16](850,200) and outline[0](950,-100)
-    // Island edge: between island[16](630,130) and island[0](700,-80)
-    // At y≈100, interpolate to find the wall positions
+    // Finish line at the start area on the straight
     finishLine: {
-      a: { x: 910, y: 50 },  // outer bank side
-      b: { x: 670, y: 50 },  // island side
+      a: { x: 1000, y: -100 },
+      b: { x: 750, y: -100 },
     },
   };
 }
