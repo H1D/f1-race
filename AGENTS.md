@@ -30,7 +30,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | camera | `src/systems/camera.ts` | Dual-mode: follow (single entity + look-ahead) or fixed (all entities + dynamic zoom) |
 | boat-render | `src/systems/boat-render.ts` | boat.png sprite with interpolation + procedural fallback |
 | background-render | `src/systems/background-render.ts` | Water + island + wall + grid |
-| particles | `src/systems/particles.ts` | Pooled particle effects — wake spray + collision sparks (512-slot pool) |
+| particles | `src/systems/particles.ts` | Pooled particle effects — wake spray + bow arrow wave + collision sparks (512-slot pool) |
 | debug | `src/debug.ts` | Camera mode toggle + per-boat physics tuning with sliders + 4 presets |
 
 **Data flow:**
@@ -45,8 +45,8 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **World-space velocity**: Stored as (vx,vy), decomposed to local each frame — turning creates natural drift
 - **Motor voltage ramp**: Throttle sets `targetVoltage`, ramps up (1.5/s) and down (2.5/s). Reverse targets -0.4
 - **Anisotropic drag**: Forward drag 0.012 (glide) + lateral drag 0.95 (resist drift), ~79:1 ratio
-- **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (dynamic zoom, no rotation) — smooth 500ms transition
-- **Zero-allocation particle pool**: 512 pre-allocated slots reused via `active` flag — no GC pressure
+- **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (damped-spring zoom, no rotation) — smooth 500ms transition
+- **Zero-allocation particle pool**: 512 pre-allocated slots reused via `active` flag — no GC pressure. Three emitters: wake (stern), bow arrow (chevron at nose), collision sparks
 
 ## Key Rules
 

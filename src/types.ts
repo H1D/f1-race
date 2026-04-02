@@ -94,6 +94,7 @@ export interface CameraState {
   entities: Entity[]; // all boats — used for framing in fixed mode
   _prevTarget: Entity | null; // internal: previous followTarget for detecting switches
   _transitionElapsed: number; // internal: ms elapsed since last mode switch
+  _zoomVelocity: number; // internal: spring velocity for zoom
 }
 
 // === Particle (lightweight, pooled) ===
@@ -108,6 +109,7 @@ export interface Particle {
   r: number; // 0-255
   g: number;
   b: number;
+  round: boolean; // render as circle instead of square
   active: boolean;
 }
 

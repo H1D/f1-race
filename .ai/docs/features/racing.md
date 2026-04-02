@@ -4,7 +4,7 @@ Main gameplay state. Spawns two player boats on track, runs physics + collision 
 
 ```toon
 status: active
-depends_on[4]: boat-physics,track,camera,debug
+depends_on[5]: boat-physics,track,camera,particles,debug
 entry_point: src/states/racing-state.ts
 
 files[5]{path,purpose}:
@@ -19,7 +19,7 @@ files[5]{path,purpose}:
 
 - Two boats spawned: Player 1 (red #e04040, WASD) and Player 2 (yellow #e0c040, Arrows)
 - Player 2 offset 50 units below Player 1 at start
-- Physics + collision run independently for each boat each tick
+- Physics + collision + particle emitters (wake + bow spray + collision sparks) run independently for each boat each tick
 - HUD shows P1 speed (red) and P2 speed (yellow) — top-right corner
 - Boat rendered using `boat.png` sprite with procedural polygon fallback while image loads
 - Debug panel created in `enter()`, cleaned up (DOM removal) in `exit()`

@@ -18,6 +18,7 @@ import { renderBackground } from "../systems/background-render";
 import { createDebugMenu } from "../debug";
 import {
   createParticlePool,
+  emitBowSpray,
   emitCollisionSparks,
   emitWake,
   renderParticles,
@@ -64,6 +65,7 @@ export class RacingState implements GameState {
       entities: [this.player1, this.player2],
       _prevTarget: null,
       _transitionElapsed: 999,
+      _zoomVelocity: 0,
     };
 
     this.particles = createParticlePool(512);
@@ -85,12 +87,14 @@ export class RacingState implements GameState {
     updatePhysics(this.player1, input.player1, dt);
     resolveCollisions(this.player1, this.track, this.collisionResult);
     emitWake(this.particles, this.player1);
+    emitBowSpray(this.particles, this.player1);
     emitCollisionSparks(this.particles, this.collisionResult);
 
     // Player 2: physics → collision → particles
     updatePhysics(this.player2, input.player2, dt);
     resolveCollisions(this.player2, this.track, this.collisionResult);
     emitWake(this.particles, this.player2);
+    emitBowSpray(this.particles, this.player2);
     emitCollisionSparks(this.particles, this.collisionResult);
 
     // Particle physics
