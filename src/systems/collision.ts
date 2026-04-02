@@ -76,16 +76,19 @@ function wallResponse(vel: { x: number; y: number; angular: number }, nx: number
 }
 
 /** Polygon-based collision for MapData */
-export function resolveMapCollisions(entity: Entity, map: MapData): void {
+export function resolveMapCollisions(entity: Entity, map: MapData, flooding = false): void {
   const pos = entity.transform.pos;
   const vel = entity.velocity;
 
-  // World boundary
+  // World boundary (always enforced)
   const ws = map.worldSize;
   if (pos.x < -ws) { pos.x = -ws; vel.x = Math.max(0, vel.x); }
   if (pos.x > ws) { pos.x = ws; vel.x = Math.min(0, vel.x); }
   if (pos.y < -ws) { pos.y = -ws; vel.y = Math.max(0, vel.y); }
   if (pos.y > ws) { pos.y = ws; vel.y = Math.min(0, vel.y); }
+
+  // During flooding: skip land collision — entire map is water
+  if (flooding) return;
 
   // Outer bank — boat must stay INSIDE the outline
   if (map.outline.length >= 3 && !pointInPolygon(pos, map.outline)) {

@@ -3,7 +3,7 @@
 ## Component Map
 
 ```toon
-components[28]{name,type,path,responsibility}:
+components[29]{name,type,path,responsibility}:
   main,bootstrap,src/main.ts,canvas setup + wires dual-player input/state/loop
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
@@ -16,6 +16,7 @@ components[28]{name,type,path,responsibility}:
   editor-toolbar,ui,src/editor/toolbar.ts,HTML toolbar with mode tabs and action buttons
   physics,system,src/systems/physics.ts,world-space velocity decompose/recompose + anisotropic drag + motor ramp
   collision,system,src/systems/collision.ts,polygon boundary enforcement + edge-normal wall response with sliding
+  flooding,system,src/systems/flooding.ts,"periodic flood cycle (20s/5s), penalty system, settings panel, flood overlay"
   camera,system,src/systems/camera.ts,follow camera with look-ahead + rotation
   boat-render,system,src/systems/boat-render.ts,boat.png sprite with interpolation + procedural fallback
   map-renderer,system,src/map/map-renderer.ts,polygon map rendering — land + water channel + grid + walls + bridges + attributes

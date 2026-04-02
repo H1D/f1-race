@@ -4,10 +4,11 @@ framework: none (vanilla Canvas 2D)
 runtime: bun
 updated: 2026-04-02
 
-features[10]{name,path,status,layer}:
+features[11]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend
   racing,.ai/docs/features/racing.md,active,frontend
   camera,.ai/docs/features/camera.md,active,frontend
+  flooding,.ai/docs/features/flooding.md,active,frontend
   powerups,.ai/docs/features/powerups.md,active,frontend
   map-editor,.ai/docs/features/map-editor.md,active,frontend
   track,.ai/docs/features/track.md,active,frontend
