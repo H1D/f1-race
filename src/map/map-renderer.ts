@@ -25,6 +25,24 @@ const ATTR_LABELS: Record<string, string> = {
   "cheese-shop": "CS",
 };
 
+const FLAG_POLE_HEIGHT = 24;
+const FLAG_WIDTH = 14;
+const FLAG_HEIGHT = 10;
+
+function renderFlag(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  // Pole (horizontal, pointing right)
+  ctx.strokeStyle = "#888";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + FLAG_POLE_HEIGHT, y);
+  ctx.stroke();
+
+  // Flag (rectangle hanging down from end of pole)
+  ctx.fillStyle = color;
+  ctx.fillRect(x + FLAG_POLE_HEIGHT, y + 1, FLAG_HEIGHT, FLAG_WIDTH);
+}
+
 const CORNER_RADIUS = 60;
 
 function tracePath(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
@@ -116,6 +134,44 @@ export function renderMap(ctx: CanvasRenderingContext2D, map: MapData): void {
   // Attributes (on land, rendered below bridges)
   for (const attr of map.attributes) {
     renderAttributeMarker(ctx, attr.position.x, attr.position.y, attr.type);
+  }
+
+  // Checkpoint flags on each bank
+  if (map.checkpoints) {
+    for (const cp of map.checkpoints) {
+      renderFlag(ctx, cp.a.x, cp.a.y, "#ff8844");
+      renderFlag(ctx, cp.b.x, cp.b.y, "#ff8844");
+    }
+  }
+
+  // Finish line (checkered pattern)
+  if (map.finishLine) {
+    const fl = map.finishLine;
+    const dx = fl.b.x - fl.a.x;
+    const dy = fl.b.y - fl.a.y;
+    const len = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    const lineWidth = 12;
+    const squareSize = lineWidth / 2;
+    const numSquares = Math.ceil(len / squareSize);
+
+    ctx.save();
+    ctx.translate(fl.a.x, fl.a.y);
+    ctx.rotate(angle);
+
+    for (let i = 0; i < numSquares; i++) {
+      for (let row = 0; row < 2; row++) {
+        ctx.fillStyle = (i + row) % 2 === 0 ? "#ffffff" : "#111111";
+        ctx.fillRect(
+          i * squareSize,
+          -lineWidth / 2 + row * squareSize,
+          squareSize,
+          squareSize,
+        );
+      }
+    }
+
+    ctx.restore();
   }
 
   // World boundary

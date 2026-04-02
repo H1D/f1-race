@@ -17,6 +17,7 @@ import { createBoatEntity } from "../entity";
 import { getCurrentMap } from "../map/map-data";
 import { updatePhysics } from "../systems/physics";
 import { resolveMapCollisions, resolveBoatCollision } from "../systems/collision";
+import { segmentsCross } from "../map/geometry";
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
 import { renderMap, renderBridges } from "../map/map-renderer";
@@ -102,6 +103,15 @@ export class RacingState implements GameState {
   private penalty1!: BoatPenalty;
   private penalty2!: BoatPenalty;
   private particles!: Particle[];
+  private winner: string | null = null;
+  private winTime = 0;
+  private raceStartGrace = 2; // seconds before finish line activates
+  private restartHandler: ((e: KeyboardEvent) => void) | null = null;
+  private readonly totalLaps = 5;
+  private p1NextCheckpoint = 0; // index of next checkpoint boat must cross
+  private p2NextCheckpoint = 0;
+  private p1Laps = 0;
+  private p2Laps = 0;
   private collisionResult: CollisionResult = {
     collided: false,
     contactX: 0,
@@ -200,6 +210,10 @@ export class RacingState implements GameState {
   }
 
   exit() {
+    if (this.restartHandler) {
+      window.removeEventListener("keydown", this.restartHandler);
+      this.restartHandler = null;
+    }
     this.powerupDebugPanel?.remove();
     this.debugPanel?.remove();
     this.editorBtn?.remove();
@@ -208,9 +222,43 @@ export class RacingState implements GameState {
     document.getElementById("flood-toggle-btn")?.remove();
   }
 
+  private crossesGate(boat: Entity, gate: { a: { x: number; y: number }; b: { x: number; y: number } }): boolean {
+    return segmentsCross(boat.transform.prevPos, boat.transform.pos, gate.a, gate.b);
+  }
+
+  private updateCheckpoints(boat: Entity, nextCheckpoint: number): number {
+    const cps = this.map.checkpoints;
+    if (!cps || nextCheckpoint >= cps.length) return nextCheckpoint;
+    if (this.crossesGate(boat, cps[nextCheckpoint]!)) {
+      return nextCheckpoint + 1;
+    }
+    return nextCheckpoint;
+  }
+
+  private hasCompletedLap(boat: Entity, nextCheckpoint: number): boolean {
+    const cps = this.map.checkpoints;
+    if (!cps || cps.length === 0) return true; // no checkpoints = always valid
+    return nextCheckpoint >= cps.length && this.crossesGate(boat, this.map.finishLine);
+  }
+
   update(dt: number, input: DualInput) {
     this.lastDt = dt;
     this.gameLog.elapsedTime += dt;
+    this.raceStartGrace -= dt;
+
+    // If someone won, freeze the game — space restarts
+    if (this.winner) {
+      this.winTime += dt;
+      if (!this.restartHandler && this.winTime > 2) {
+        this.restartHandler = (e: KeyboardEvent) => {
+          if (e.code === "Space") {
+            this.gameCtx.switchState(new RacingState());
+          }
+        };
+        window.addEventListener("keydown", this.restartHandler);
+      }
+      return;
+    }
 
     // Flood system
     updateFlood(this.flood, dt);
@@ -268,6 +316,35 @@ export class RacingState implements GameState {
     }
 
     updateParticles(this.particles, dt);
+
+    // Checkpoint + finish line tracking
+    if (this.raceStartGrace <= 0 && !this.winner) {
+      this.p1NextCheckpoint = this.updateCheckpoints(this.player1, this.p1NextCheckpoint);
+      this.p2NextCheckpoint = this.updateCheckpoints(this.player2, this.p2NextCheckpoint);
+
+      if (this.hasCompletedLap(this.player1, this.p1NextCheckpoint)) {
+        this.p1Laps++;
+        this.p1NextCheckpoint = 0;
+        if (this.p1Laps >= this.totalLaps) {
+          this.winner = "Player 1";
+          this.winTime = 0;
+          this.gameLog.log("Player 1 wins!", "system");
+        } else {
+          this.gameLog.log(`P1 lap ${this.p1Laps}/${this.totalLaps}`, "system");
+        }
+      }
+      if (!this.winner && this.hasCompletedLap(this.player2, this.p2NextCheckpoint)) {
+        this.p2Laps++;
+        this.p2NextCheckpoint = 0;
+        if (this.p2Laps >= this.totalLaps) {
+          this.winner = "Player 2";
+          this.winTime = 0;
+          this.gameLog.log("Player 2 wins!", "system");
+        } else {
+          this.gameLog.log(`P2 lap ${this.p2Laps}/${this.totalLaps}`, "system");
+        }
+      }
+    }
 
     // Powerup spawning
     const trackBounds = trackBoundsFromMap(this.map);
@@ -408,6 +485,39 @@ export class RacingState implements GameState {
 
     // Event log
     renderGameLog(ctx, this.gameLog, w, h);
+
+    // Win screen overlay
+    if (this.winner) {
+      const fade = Math.min(1, this.winTime * 2);
+      ctx.fillStyle = `rgba(0,0,0,${fade * 0.6})`;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // Winner name
+      const pulse = 1 + Math.sin(this.winTime * 3) * 0.05;
+      const size = Math.round(64 * pulse);
+      ctx.font = `bold ${size}px monospace`;
+      const color = this.winner === "Player 1" ? "#e04040" : "#e0c040";
+      ctx.fillStyle = color;
+      ctx.globalAlpha = fade;
+      ctx.fillText(`${this.winner} Wins!`, w / 2, h / 2 - 30);
+
+      // Checkered flag emoji + subtitle
+      ctx.font = "bold 28px monospace";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("RACE FINISHED", w / 2, h / 2 + 30);
+
+      if (this.winTime > 2) {
+        ctx.font = "18px monospace";
+        ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(this.winTime * 4) * 0.3})`;
+        ctx.fillText("Press SPACE to restart", w / 2, h / 2 + 80);
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.textBaseline = "alphabetic";
+    }
   }
 
   private renderHUD(ctx: CanvasRenderingContext2D, w: number) {
@@ -430,6 +540,16 @@ export class RacingState implements GameState {
       this.penalty2.active ? `P2: PENALTY ${this.penalty2.remaining.toFixed(1)}s` : `P2: ${s2.toFixed(0)}`,
       w - 20, 50,
     );
+
+    // Lap counter (top center)
+    ctx.textAlign = "center";
+    ctx.font = "bold 65px monospace";
+    const p1Left = this.totalLaps - this.p1Laps;
+    const p2Left = this.totalLaps - this.p2Laps;
+    ctx.fillStyle = "rgba(224,64,64,0.6)";
+    ctx.fillText(`P1: ${p1Left} lap${p1Left !== 1 ? "s" : ""} left`, w / 2, 70);
+    ctx.fillStyle = "rgba(224,192,64,0.6)";
+    ctx.fillText(`P2: ${p2Left} lap${p2Left !== 1 ? "s" : ""} left`, w / 2, 140);
   }
 
   private renderBoatWithPenalty(

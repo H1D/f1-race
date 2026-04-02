@@ -72,6 +72,24 @@ export function createDefaultMap(): MapData {
     worldSize: 1300,
     startPos: { x: 830, y: 100 },
     startAngle: -Math.PI / 2,
+    // Checkpoints: gates around the track that must be crossed in order
+    // Track runs counterclockwise from start (top-right, heading up)
+    checkpoints: [
+      // CP1: top area between outline[2](600,-700) and island[2](420,-520)
+      { a: { x: 600, y: -700 }, b: { x: 420, y: -520 } },
+      // CP2: left side between outline[8](-950,100) and island[8](-700,80)
+      { a: { x: -950, y: 100 }, b: { x: -700, y: 80 } },
+      // CP3: bottom between outline[12](-150,700) and island[12](-100,500)
+      { a: { x: -150, y: 700 }, b: { x: -100, y: 500 } },
+    ],
+    // Finish line spans the full river width at the start area
+    // Outer bank edge: between outline[16](850,200) and outline[0](950,-100)
+    // Island edge: between island[16](630,130) and island[0](700,-80)
+    // At y≈100, interpolate to find the wall positions
+    finishLine: {
+      a: { x: 910, y: 50 },  // outer bank side
+      b: { x: 670, y: 50 },  // island side
+    },
   };
 }
 
