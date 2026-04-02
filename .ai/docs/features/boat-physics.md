@@ -21,8 +21,8 @@ files[4]{path,purpose}:
 - Drag applied before thrust: `forwardSpeed *= (1 - forwardDrag)`, `lateralSpeed *= (1 - lateralDrag)`
 - Thrust: `forwardSpeed += motorVoltage * thrustForce * dt`
 - Steering scales with `min(1, |forwardSpeed| / turnSpeedReference)` — can't turn stationary
-- Collision: polygon-based wall response cancels wall-normal velocity, preserves tangential sliding with friction
-- Boat-to-boat collision: circle-based detection (radius 24), equal-mass impulse response with bounce (0.6), mild angular impulse from off-center hits (spin factor 0.08)
+- Wall collision: polygon-based, accounts for boat radius (20 units) — collides when edge touches wall, not just center. Angle-dependent response: glancing hits deflect course (high bounce, low friction), head-on hits push back gently (low bounce, high friction)
+- Boat-to-boat collision: circle-based detection (radius 20), equal-mass impulse response with bounce (0.6), mild angular impulse from off-center hits (spin factor 0.08)
 
 ## Default Values (Yacht preset)
 

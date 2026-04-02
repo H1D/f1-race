@@ -3,7 +3,7 @@ import { pointInPolygon, findNearestEdge } from "../map/geometry";
 
 const PUSH_DIST = 6;
 const WALL_FRICTION = 0.5; // tangential velocity kept on wall slide
-const BOUNCE = 0.05; // tiny bounce off the wall
+const BOUNCE = 0.35; // bounce off the wall
 
 /** Legacy AABB collision for TrackBounds */
 export function resolveCollisions(entity: Entity, track: TrackBounds): void {
@@ -58,24 +58,32 @@ export function resolveCollisions(entity: Entity, track: TrackBounds): void {
 function wallResponse(vel: { x: number; y: number; angular: number }, nx: number, ny: number) {
   // Velocity dot normal = how fast we're moving INTO the wall (negative = toward wall)
   const vDotN = vel.x * nx + vel.y * ny;
+  if (vDotN >= 0) return;
 
-  if (vDotN < 0) {
-    // Remove the into-wall component, add tiny bounce
-    vel.x -= vDotN * (1 + BOUNCE) * nx;
-    vel.y -= vDotN * (1 + BOUNCE) * ny;
-  }
+  const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+  // headOn: 0 = glancing (parallel to wall), 1 = head-on (perpendicular)
+  const headOn = speed > 0.01 ? Math.abs(vDotN) / speed : 0;
+
+  // Glancing hit: strong bounce to deflect course, keep tangential speed
+  // Head-on hit: weak bounce, just push back gently
+  const bounce = BOUNCE * (1 - headOn * 0.7);
+  const friction = WALL_FRICTION + (1 - WALL_FRICTION) * headOn * 0.6;
+
+  // Remove the into-wall component + bounce
+  vel.x -= vDotN * (1 + bounce) * nx;
+  vel.y -= vDotN * (1 + bounce) * ny;
 
   // Apply friction to the remaining tangential velocity
-  const tDotN = vel.x * nx + vel.y * ny; // should be ~0 or small positive now
+  const tDotN = vel.x * nx + vel.y * ny;
   const tx = vel.x - tDotN * nx;
   const ty = vel.y - tDotN * ny;
-  vel.x = tDotN * nx + tx * WALL_FRICTION;
-  vel.y = tDotN * ny + ty * WALL_FRICTION;
+  vel.x = tDotN * nx + tx * friction;
+  vel.y = tDotN * ny + ty * friction;
 
   vel.angular *= 0.5;
 }
 
-const BOAT_RADIUS = 24; // collision radius (~half of 64×32 boat)
+const BOAT_RADIUS = 20; // collision radius (~half of 64×32 boat)
 const BOAT_BOUNCE = 0.6; // how much velocity is reflected on boat-boat hit
 const BOAT_SPIN = 0.08; // angular impulse from off-center hits
 
@@ -146,19 +154,43 @@ export function resolveMapCollisions(entity: Entity, map: MapData, flooding = fa
   // During flooding: skip land collision — entire map is water
   if (flooding) return;
 
-  // Outer bank — boat must stay INSIDE the outline
-  if (map.outline.length >= 3 && !pointInPolygon(pos, map.outline)) {
-    const edge = findNearestEdge(pos, map.outline);
-    pos.x = edge.point.x - edge.nx * PUSH_DIST;
-    pos.y = edge.point.y - edge.ny * PUSH_DIST;
-    wallResponse(vel, -edge.nx, -edge.ny);
+  // Outer bank — boat must stay INSIDE the outline (accounting for radius)
+  if (map.outline.length >= 3) {
+    if (!pointInPolygon(pos, map.outline)) {
+      const edge = findNearestEdge(pos, map.outline);
+      pos.x = edge.point.x - edge.nx * (PUSH_DIST + BOAT_RADIUS);
+      pos.y = edge.point.y - edge.ny * (PUSH_DIST + BOAT_RADIUS);
+      wallResponse(vel, -edge.nx, -edge.ny);
+    } else {
+      const edge = findNearestEdge(pos, map.outline);
+      if (edge.distSq < BOAT_RADIUS * BOAT_RADIUS) {
+        const dist = Math.sqrt(edge.distSq);
+        const penetration = BOAT_RADIUS - dist;
+        // Push inward (away from outer wall = opposite of outward normal)
+        pos.x -= edge.nx * (penetration + PUSH_DIST);
+        pos.y -= edge.ny * (penetration + PUSH_DIST);
+        wallResponse(vel, -edge.nx, -edge.ny);
+      }
+    }
   }
 
-  // Island — boat must stay OUTSIDE the island
-  if (map.island.length >= 3 && pointInPolygon(pos, map.island)) {
-    const edge = findNearestEdge(pos, map.island);
-    pos.x = edge.point.x + edge.nx * PUSH_DIST;
-    pos.y = edge.point.y + edge.ny * PUSH_DIST;
-    wallResponse(vel, edge.nx, edge.ny);
+  // Island — boat must stay OUTSIDE the island (accounting for radius)
+  if (map.island.length >= 3) {
+    if (pointInPolygon(pos, map.island)) {
+      const edge = findNearestEdge(pos, map.island);
+      pos.x = edge.point.x + edge.nx * (PUSH_DIST + BOAT_RADIUS);
+      pos.y = edge.point.y + edge.ny * (PUSH_DIST + BOAT_RADIUS);
+      wallResponse(vel, edge.nx, edge.ny);
+    } else {
+      const edge = findNearestEdge(pos, map.island);
+      if (edge.distSq < BOAT_RADIUS * BOAT_RADIUS) {
+        const dist = Math.sqrt(edge.distSq);
+        const penetration = BOAT_RADIUS - dist;
+        // Push outward (along island's outward normal)
+        pos.x += edge.nx * (penetration + PUSH_DIST);
+        pos.y += edge.ny * (penetration + PUSH_DIST);
+        wallResponse(vel, edge.nx, edge.ny);
+      }
+    }
   }
 }

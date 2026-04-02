@@ -20,7 +20,7 @@ import { resolveMapCollisions, resolveBoatCollision } from "../systems/collision
 import { updateCamera, applyCameraTransform } from "../systems/camera";
 import { renderBoat } from "../systems/boat-render";
 import { renderMap, renderBridges } from "../map/map-renderer";
-import { createDebugMenu } from "../debug";
+import { createDebugMenu, debugSettings } from "../debug";
 import { createEntityManager, type EntityManager } from "../entity-manager";
 import { createSpawnManagerState, updatePowerupSpawning } from "../systems/powerup-spawn";
 import { detectPowerupPickups } from "../systems/powerup-collision";
@@ -375,6 +375,12 @@ export class RacingState implements GameState {
 
     this.renderBoatWithPenalty(ctx, this.player1, alpha, this.penalty1);
     this.renderBoatWithPenalty(ctx, this.player2, alpha, this.penalty2);
+
+    if (debugSettings.showBoatCollision) {
+      this.renderCollisionCircle(ctx, this.player1, alpha, "#e04040");
+      this.renderCollisionCircle(ctx, this.player2, alpha, "#e0c040");
+    }
+
     renderBridges(ctx, this.map);
 
     renderActiveEffectVisuals(ctx, this.player1, this.powerupDefs, alpha);
@@ -429,6 +435,24 @@ export class RacingState implements GameState {
     } else {
       renderBoat(ctx, boat, alpha);
     }
+  }
+
+  private renderCollisionCircle(
+    ctx: CanvasRenderingContext2D,
+    boat: Entity,
+    alpha: number,
+    color: string,
+  ) {
+    const tf = boat.transform;
+    const x = tf.prevPos.x + (tf.pos.x - tf.prevPos.x) * alpha;
+    const y = tf.prevPos.y + (tf.pos.y - tf.prevPos.y) * alpha;
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   private renderFloodHUD(ctx: CanvasRenderingContext2D, w: number, h: number) {

@@ -1,5 +1,9 @@
 import type { BoatPhysicsComponent, CameraState } from "./types";
 
+export const debugSettings = {
+  showBoatCollision: false,
+};
+
 interface Slider {
   key: keyof BoatPhysicsComponent;
   label: string;
@@ -243,6 +247,21 @@ export function createDebugMenu(
 
     boatBody.appendChild(camRow);
   }
+
+  // Collision debug toggle
+  const collRow = document.createElement("div");
+  collRow.className = "row";
+  collRow.style.marginBottom = "8px";
+  const collLabel = document.createElement("label");
+  collLabel.textContent = "Show Collision";
+  const collCheck = document.createElement("input");
+  collCheck.type = "checkbox";
+  collCheck.checked = debugSettings.showBoatCollision;
+  collCheck.addEventListener("change", () => {
+    debugSettings.showBoatCollision = collCheck.checked;
+  });
+  collRow.append(collLabel, collCheck);
+  boatBody.appendChild(collRow);
 
   // Boat physics sections (supports 1 or 2 boats)
   const boats: { label: string; color: string; params: BoatPhysicsComponent }[] = [

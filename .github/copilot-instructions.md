@@ -47,7 +47,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn (via `trackBoundsFromMap()`) → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-5. Collision: keep boat inside outer polygon + outside island. Edge-normal push + velocity cancellation + tangential sliding. Boat-to-boat: circle collision with impulse response
+5. Collision: radius-aware wall check (boat edge, not center) for outer polygon + island. Angle-dependent response: glancing hits deflect, head-on hits push back. Boat-to-boat: circle collision with impulse
 6. Render: clear → camera transform → `renderMap()` → zones → pickups → obstacles → particles → boats → effect visuals → `renderBridges()` (boats under) → restore → HUD → effects HUD → event log
 7. States: MenuState → RacingState ↔ EditorState
 
@@ -65,7 +65,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Data-driven powerups**: PowerupDefinition registry with onApply/onTick/onExpire hooks + optional `tunables` for debug-panel knobs
 - **Multiplier-based effect reversal**: Effects store multipliers, divide on expire — order-independent
 - **Orchestrator logging**: Systems stay pure, RacingState observes outputs and logs events
-- **Boat-to-boat collision**: Circle-based detection with impulse response + collision sparks
+- **Boat collision**: Radius-aware wall detection (20 units), angle-dependent bounce. Boat-to-boat: circle impulse response + sparks
 
 ## Key Rules
 
