@@ -25,7 +25,12 @@ export function createDefaultMap(): MapData {
     outline,
     island,
     attributes: [],
-    bridges: [],
+    bridges: [
+      { id: 1, start: { x: 720, y: 0 },  end: { x: 900, y: 0 },    width: 20 },
+      { id: 2, start: { x: 0,   y: 480 }, end: { x: 0,   y: 650 },  width: 20 },
+      { id: 3, start: { x: -900, y: 0 },  end: { x: -720, y: 0 },   width: 20 },
+      { id: 4, start: { x: 0,  y: -650 }, end: { x: 0,   y: -480 }, width: 20 },
+    ],
     worldSize: 1200,
     startPos: { x: 750, y: 0 },
     startAngle: -Math.PI / 2,

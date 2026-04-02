@@ -31,9 +31,9 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | map-data | `src/map/map-data.ts` | Shared MapData singleton + default map factory + land/water queries |
 | geometry | `src/map/geometry.ts` | Point-in-polygon, edge normals, path processing, polygon offset |
 | particles | `src/systems/particles.ts` | Pooled particle effects — wake spray + bow wave + collision sparks (512-slot pool) |
-| powerup-spawn | `src/systems/powerup-spawn.ts` | Timer-based weighted powerup spawning via `trackBoundsFromMap()` adapter |
+| powerup-spawn | `src/systems/powerup-spawn.ts` | Timer-based weighted powerup spawning — grid-samples world bounding box, keeps water-only points via `isOnWater()` |
 | powerup-collision | `src/systems/powerup-collision.ts` | Circle-circle pickup detection |
-| powerup-effects | `src/systems/powerup-effects.ts` | Effect apply/tick/expire lifecycle with stacking rules |
+| powerup-effects | `src/systems/powerup-effects.ts` | Effect apply (canApply gate + stacking rules)/tick/expire lifecycle; accepts map: MapData passed to onSpawn |
 | powerup-render | `src/systems/powerup-render.ts` | Render pickups, zones, obstacles, effect visuals (pulsing radial glow), HUD, pickup name toasts |
 | ui-text | `src/ui-text.ts` | All player-visible strings — static values + typed template functions |
 | entity-lifetime | `src/systems/entity-lifetime.ts` | Countdown → mark for removal |
@@ -48,7 +48,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
 2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
-3. Powerup pipeline: spawn (via `trackBoundsFromMap()`) → detect pickups (both boats) → apply effects → tick → expire → zones → lifetimes → cleanup
+3. Powerup pipeline: spawn (water-only grid points via `isOnWater()`) → detect pickups (both boats) → canApply gate → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
 5. Collision: keep boat inside outer polygon + outside island. Edge-normal push + velocity cancellation + tangential sliding. Boat-to-boat: circle collision with impulse response
 6. Render: clear → camera transform → `renderMap()` → zones → pickups → obstacles → particles → boats → effect visuals → `renderBridges()` (boats under) → restore → HUD → effects HUD → pickup toasts → event log
@@ -93,7 +93,9 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - `GameState.update()` takes `DualInput`, not single `InputState`
 - `renderParticles()` must be called between `applyCameraTransform()` and `ctx.restore()` — world-space rendering
 - `CollisionResult` is a mutable out-param — `resolveMapCollisions()` resets and populates it each frame
-- Powerup spawn uses `trackBoundsFromMap()` adapter to derive TrackBounds from MapData
+- Powerup spawn uses `MapData` directly — `createSpawnManagerState(map)` grid-samples and filters with `isOnWater()`; `rarity > 0` guard excludes internal zone-effect definitions from spawn pool and debug tabs
+- `canApply?: (target: Entity) => boolean` on `PowerupDefinition.effect` — return false to block without applying; runs before stacking logic. Used by bicycle-drag (anchor-drag) to check for draft-shield
+- Powerup color encodes alignment: `#22ee77` green=buff, `#44bbff` blue=defensive, `#ee3344` red=hazard/avoid, `#88ee22` lime=weapon
 
 ## Features
 
@@ -102,7 +104,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Boat Physics | active | `src/systems/physics.ts`, `src/systems/collision.ts`, `src/entity.ts`, `src/debug.ts` |
 | Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` |
 | Camera | active | `src/systems/camera.ts` |
-| Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts` |
+| Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts` — 5 playable powerups (herring-boost=buff, anchor-drag=Bicycle Drag/hazard, oil-slick=weapon, canal-lock=weapon, draft-shield=defensive) |
 | Map Editor | active | `src/editor/editor-state.ts`, `src/editor/toolbar.ts` |
 | Track | active | `src/map/map-data.ts`, `src/map/map-renderer.ts`, `src/map/geometry.ts` |
 | Input | active | `src/input.ts` |

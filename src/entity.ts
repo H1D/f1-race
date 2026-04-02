@@ -108,6 +108,21 @@ export function createObstacleEntity(
   };
 }
 
+export function createBridgeBarrierEntity(
+  midX: number,
+  midY: number,
+  angle: number,
+  span: number,
+): Entity {
+  return createObstacleEntity(midX, midY, angle, {
+    width: span + 40,
+    height: 16,
+    lifetime: 5.0,
+    color: "#5a4030",
+    radius: (span + 40) / 2,
+  });
+}
+
 export function createZoneEntity(
   x: number,
   y: number,
@@ -116,6 +131,7 @@ export function createZoneEntity(
   ownerId: number,
   lifetime: number,
   affectsOwner: boolean,
+  color?: string,
 ): Entity {
   return {
     id: nextId++,
@@ -132,6 +148,7 @@ export function createZoneEntity(
       effectId,
       ownerId,
       affectsOwner,
+      color,
     },
     collider: {
       radius,

@@ -70,6 +70,7 @@ export interface ZoneComponent {
   effectId: string;
   ownerId: number;
   affectsOwner: boolean;
+  color?: string; // optional — falls back to default orange if omitted
 }
 
 export interface ColliderComponent {
@@ -229,10 +230,11 @@ export interface PowerupDefinition {
     stacking: "refresh" | "stack" | "replace" | "ignore";
     maxStacks: number;
 
+    canApply?: (target: Entity) => boolean; // return false to absorb without applying
     onApply: (target: Entity, source: Entity, state: Record<string, number>) => void;
     onTick?: (target: Entity, state: Record<string, number>, dt: number) => void;
     onExpire: (target: Entity, state: Record<string, number>) => void;
-    onSpawn?: (source: Entity) => Entity[];
+    onSpawn?: (boat: Entity, map: MapData) => Entity[];
   };
 
   visual?: {

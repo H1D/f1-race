@@ -1,9 +1,10 @@
-import type { Entity, PickupEvent, PowerupDefinition } from "../types";
+import type { Entity, MapData, PickupEvent, PowerupDefinition } from "../types";
 
 export function applyPickupEvents(
   events: PickupEvent[],
   entities: Entity[],
   definitions: Map<string, PowerupDefinition>,
+  map: MapData,
 ): Entity[] {
   const spawnedEntities: Entity[] = [];
 
@@ -16,6 +17,11 @@ export function applyPickupEvents(
 
     // Mark pickup for removal
     pickup.markedForRemoval = { reason: "picked-up" };
+
+    // canApply hook — lets a powerup intercept and absorb an incoming effect
+    if (def.effect.canApply && !def.effect.canApply(boat)) {
+      continue;
+    }
 
     // Ensure boat has activeEffects
     if (!boat.activeEffects) {
@@ -65,7 +71,7 @@ export function applyPickupEvents(
 
     // Spawn entities if the powerup produces them
     if (def.effect.onSpawn) {
-      const spawned = def.effect.onSpawn(boat);
+      const spawned = def.effect.onSpawn(boat, map);
       spawnedEntities.push(...spawned);
     }
   }

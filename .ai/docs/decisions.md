@@ -1,7 +1,7 @@
 # Decisions
 
 ```toon
-decisions[13]{id,date,title,status}:
+decisions[14]{id,date,title,status}:
   001,2026-04-02,Fixed timestep game loop,accepted
   002,2026-04-02,ECS-lite over class hierarchy,accepted
   003,2026-04-02,Anisotropic drag for boat physics,accepted
@@ -15,6 +15,7 @@ decisions[13]{id,date,title,status}:
   011,2026-04-02,Polygon maps over AABB tracks,accepted
   012,2026-04-02,Freehand draw with auto-smoothing for map editor,accepted
   013,2026-04-02,Edge-normal collision response over centroid push,accepted
+  014,2026-04-02,Grid-sampled water-only powerup spawn points,accepted
 ```
 
 ## ADR-001: Fixed timestep game loop
@@ -127,6 +128,16 @@ decisions[13]{id,date,title,status}:
 **Context**: Placing individual polygon points is tedious for users. Need intuitive track creation.
 **Decision**: User paints a freehand loop → system processes via Douglas-Peucker simplification → Chaikin corner-cutting → resample to 12 points → offset ±90px for outer/island. Result is editable via point dragging.
 **Consequences**: Fast track creation. Consistent river width. Constraints (min channel width, min turn angle, island-inside-outer) prevent unusable maps. Auto-switch to edit mode after drawing.
+
+---
+
+## ADR-014: Grid-sampled water-only powerup spawn points
+
+**Status**: accepted
+**Date**: 2026-04-02
+**Context**: The original spawn point generator produced points along four rectangular canal strips derived from `TrackBounds`. Since the map is an elliptical polygon, many strip points landed on the island or outside the water channel.
+**Decision**: Sample a regular grid (120-unit step) over the world bounding box and keep only points where `isOnWater(point, map)` returns true. `isOnWater` uses point-in-polygon ray casting — inside outer polygon AND outside island polygon.
+**Consequences**: Pickups always appear on water, adapting automatically to any map shape. Grid sampling replaces all spawn-zone-specific logic. Spawn system now takes `MapData` instead of `TrackBounds`.
 
 ---
 

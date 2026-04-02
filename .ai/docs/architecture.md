@@ -3,11 +3,11 @@
 ## Component Map
 
 ```toon
-components[29]{name,type,path,responsibility}:
+components[30]{name,type,path,responsibility}:
   main,bootstrap,src/main.ts,canvas setup + wires dual-player input/state/loop
   game-loop,core,src/game-loop.ts,fixed 60Hz timestep with render interpolation
   state-manager,core,src/state-manager.ts,game state lifecycle (enter/exit/update/render)
-  types,core,src/types.ts,all interfaces — entity components + powerup definitions + game state
+  types,core,src/types.ts,all interfaces — entity components + powerup definitions (incl. canApply hook + onSpawn(boat+map) signature) + Bridge + MapData + game state
   entity,core,src/entity.ts,entity factories (boat/pickup/obstacle/zone) + ID counter
   entity-manager,core,src/entity-manager.ts,entity list with tag/component queries + cleanup
   menu-state,state,src/states/menu-state.ts,title screen + press-space-to-start
@@ -23,7 +23,7 @@ components[29]{name,type,path,responsibility}:
   particles,system,src/systems/particles.ts,pooled particle effects — wake spray + collision sparks (512-slot pool)
   powerup-spawn,system,src/systems/powerup-spawn.ts,timer-based weighted powerup spawning via trackBoundsFromMap() adapter
   powerup-collision,system,src/systems/powerup-collision.ts,circle-circle pickup detection → PickupEvent[]
-  powerup-effects,system,src/systems/powerup-effects.ts,effect apply (stacking rules) + tick + expire lifecycle
+  powerup-effects,system,src/systems/powerup-effects.ts,effect apply (canApply gate + stacking rules) + tick + expire lifecycle; accepts map: MapData passed to onSpawn
   powerup-render,system,src/systems/powerup-render.ts,render pickups + zones + obstacles + effect visuals (pulsing radial gradient glow) + effects HUD + pickup name toasts (PowerupToast fade/drift)
   ui-text,data,src/ui-text.ts,all player-visible strings — static values + typed template functions for dynamic labels
   entity-lifetime,system,src/systems/entity-lifetime.ts,countdown → mark entities for removal
@@ -43,7 +43,7 @@ components[29]{name,type,path,responsibility}:
 3. `RacingState.update()` runs physics → `resolveMapCollisions()` → particles for each boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
 4. Physics: decompose world velocity (vx,vy) into local frame via dot product → anisotropic drag → thrust → recompose to world → cap max speed → integrate
 5. Collision: check boat inside outer polygon + outside island polygon. On hit: push to nearest edge via edge normal, cancel wall-normal velocity, apply tangential friction
-6. Powerup pipeline: spawn pickups (via `trackBoundsFromMap()` adapter) → detect pickup collisions (both boats) → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities
+6. Powerup pipeline: spawn pickups (via `trackBoundsFromMap()` adapter) → detect pickup collisions (both boats) → canApply gate → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities
 7. Render phase: clear canvas → `updateCamera(w, h, dt)` → `applyCameraTransform()` → `renderMap()` (land + water + grid + walls + attributes) → zones → pickups → obstacles → particles → both boats → effect visuals → `renderBridges()` (boats pass under) → restore → HUD → effects HUD → pickup toasts → event log
 8. State transitions via `gameCtx.switchState()` (MenuState → RacingState ↔ EditorState)
 

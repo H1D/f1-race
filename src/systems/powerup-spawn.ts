@@ -1,68 +1,47 @@
 import type {
   Entity,
   FloodState,
+  MapData,
   PowerupDefinition,
   SpawnManagerState,
   SpawnPoint,
   TrackBounds,
 } from "../types";
 import { createPickupEntity } from "../entity";
+import { isOnWater } from "../map/map-data";
 
-export function createSpawnManagerState(track: TrackBounds): SpawnManagerState {
+export function createSpawnManagerState(map: MapData): SpawnManagerState {
   return {
     timeSinceLastSpawn: 0,
     spawnInterval: 5.0,
     maxPickupsInWorld: 6,
-    spawnPoints: generateCanalSpawnPoints(track),
+    spawnPoints: generateCanalSpawnPoints(map),
   };
 }
 
-function generateCanalSpawnPoints(track: TrackBounds): SpawnPoint[] {
+function generateCanalSpawnPoints(map: MapData): SpawnPoint[] {
+  // Sample a grid over the world bounding box and keep only water-covered points.
+  // This works correctly for any polygon shape — elliptical canals, irregular coastlines, etc.
+  const xs = map.outline.map((p) => p.x);
+  const ys = map.outline.map((p) => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const step = 120;
   const points: SpawnPoint[] = [];
-  const { outer, inner } = track;
 
-  // Top canal (between outer.minY and inner.minY)
-  const topY = (outer.minY + inner.minY) / 2;
-  for (let x = outer.minX + 100; x < outer.maxX; x += 150) {
-    points.push({
-      pos: { x, y: topY },
-      zoneType: "canal",
-      distanceFromCanal: 0,
-      active: true,
-    });
-  }
-
-  // Bottom canal
-  const botY = (outer.maxY + inner.maxY) / 2;
-  for (let x = outer.minX + 100; x < outer.maxX; x += 150) {
-    points.push({
-      pos: { x, y: botY },
-      zoneType: "canal",
-      distanceFromCanal: 0,
-      active: true,
-    });
-  }
-
-  // Left canal
-  const leftX = (outer.minX + inner.minX) / 2;
-  for (let y = inner.minY; y < inner.maxY; y += 150) {
-    points.push({
-      pos: { x: leftX, y },
-      zoneType: "canal",
-      distanceFromCanal: 0,
-      active: true,
-    });
-  }
-
-  // Right canal
-  const rightX = (outer.maxX + inner.maxX) / 2;
-  for (let y = inner.minY; y < inner.maxY; y += 150) {
-    points.push({
-      pos: { x: rightX, y },
-      zoneType: "canal",
-      distanceFromCanal: 0,
-      active: true,
-    });
+  for (let x = minX + step / 2; x < maxX; x += step) {
+    for (let y = minY + step / 2; y < maxY; y += step) {
+      if (!isOnWater({ x, y }, map)) continue;
+      points.push({
+        pos: { x, y },
+        zoneType: "canal",
+        distanceFromCanal: 0,
+        active: true,
+      });
+    }
   }
 
   return points;
@@ -88,9 +67,11 @@ export function updatePowerupSpawning(
 
   state.timeSinceLastSpawn = 0;
 
-  // Filter eligible definitions by flood state
+  // Filter eligible definitions: must be a spawnable pickup (rarity > 0) and match flood state
   const eligible = Array.from(definitions.values()).filter(
-    (def) => def.category === "canal" || (def.category === "flood" && floodState.active),
+    (def) =>
+      def.rarity > 0 &&
+      (def.category === "canal" || (def.category === "flood" && floodState.active)),
   );
   if (eligible.length === 0) return [];
 

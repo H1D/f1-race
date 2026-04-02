@@ -172,8 +172,7 @@ export class RacingState implements GameState {
     this.entityManager.add(this.player1);
     this.entityManager.add(this.player2);
 
-    const trackBounds = trackBoundsFromMap(this.map);
-    this.spawnState = createSpawnManagerState(trackBounds);
+    this.spawnState = createSpawnManagerState(this.map);
     this.floodState = { active: false, level: 0, timeRemaining: 0 };
     this.powerupDefs = loadPowerupDefinitions();
     this.gameLog = createGameLog();
@@ -313,7 +312,7 @@ export class RacingState implements GameState {
 
     // Apply pickup effects
     const spawnedEntities = applyPickupEvents(
-      pickupEvents, this.entityManager.entities, this.powerupDefs,
+      pickupEvents, this.entityManager.entities, this.powerupDefs, this.map,
     );
     this.entityManager.addMany(spawnedEntities);
 

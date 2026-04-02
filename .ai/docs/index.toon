@@ -2,7 +2,7 @@ project: boat-race
 type: typescript/canvas
 framework: none (vanilla Canvas 2D)
 runtime: bun
-updated: 2026-04-02
+updated: 2026-04-02 (powerups: Bicycle Drag rename, water-only spawns, color scheme)
 
 features[11]{name,path,status,layer}:
   boat-physics,.ai/docs/features/boat-physics.md,active,frontend

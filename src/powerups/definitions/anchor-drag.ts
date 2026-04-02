@@ -2,13 +2,13 @@ import type { PowerupDefinition } from "../../types";
 
 export const anchorDrag: PowerupDefinition = {
   id: "anchor-drag",
-  name: "Anchor Drag",
+  name: "Bicycle Drag",
   category: "canal",
   rarity: 0.3,
 
   spawn: {
     radius: 18,
-    color: "#ff8844",
+    color: "#ee3344",
     icon: "⚓",
   },
 
@@ -17,6 +17,18 @@ export const anchorDrag: PowerupDefinition = {
     duration: 5.0,
     stacking: "ignore",
     maxStacks: 1,
+
+    canApply(target) {
+      const idx = target.activeEffects?.effects.findIndex(
+        (e) => e.powerupId === "draft-shield",
+      ) ?? -1;
+      if (idx >= 0) {
+        // Shield absorbs this — consume it
+        target.activeEffects!.effects.splice(idx, 1);
+        return false;
+      }
+      return true;
+    },
 
     onApply(_target, _source, state) {
       const sm = anchorDrag.tunables!.speedMult!.value;
@@ -35,7 +47,7 @@ export const anchorDrag: PowerupDefinition = {
 
   visual: {
     trailEffect: "drag-bubbles",
-    boatTint: "#ff8844",
+    boatTint: "#ee3344",
     hudIcon: "⚓",
   },
 

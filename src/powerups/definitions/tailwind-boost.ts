@@ -1,15 +1,15 @@
 import type { PowerupDefinition } from "../../types";
 
-export const tailwindBoost: PowerupDefinition = {
-  id: "tailwind-boost",
-  name: "Tailwind Boost",
+export const herringBoost: PowerupDefinition = {
+  id: "herring-boost",
+  name: "Herring Boost",
   category: "canal",
   rarity: 0.7,
 
   spawn: {
     radius: 20,
-    color: "#88ccff",
-    icon: "💨",
+    color: "#22ee77",
+    icon: "🐟",
   },
 
   effect: {
@@ -19,8 +19,8 @@ export const tailwindBoost: PowerupDefinition = {
     maxStacks: 1,
 
     onApply(_target, _source, state) {
-      const sm = tailwindBoost.tunables!.speedMult!.value;
-      const tm = tailwindBoost.tunables!.thrustMult!.value;
+      const sm = herringBoost.tunables!.speedMult!.value;
+      const tm = herringBoost.tunables!.thrustMult!.value;
       state.speedMult = sm;
       state.thrustMult = tm;
       _target.boatPhysics!.maxSpeed *= sm;
@@ -35,8 +35,8 @@ export const tailwindBoost: PowerupDefinition = {
 
   visual: {
     trailEffect: "speed-lines",
-    boatTint: "#88ccff",
-    hudIcon: "💨",
+    boatTint: "#22ee77",
+    hudIcon: "🐟",
   },
 
   tunables: {

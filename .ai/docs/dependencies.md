@@ -17,7 +17,7 @@ dev[4]{name,version,purpose}:
 ## Internal Module Dependencies
 
 ```toon
-modules[22]{module,depends_on}:
+modules[23]{module,depends_on}:
   main,input + game-loop + state-manager + menu-state
   racing-state,entity + entity-manager + map-data + physics + collision + camera + boat-render + map-renderer + particles + debug + powerup-spawn + powerup-collision + powerup-effects + powerup-render + entity-lifetime + zone-effects + game-log + powerup-debug + registry + ui-text
   editor-state,map-data + map-renderer + geometry + toolbar + racing-state
@@ -30,6 +30,7 @@ modules[22]{module,depends_on}:
   geometry,types (Vec2)
   particles,types (Entity + Particle + CollisionResult)
   debug,types (BoatPhysicsComponent + CameraState)
+  entity,types (Entity) + createBridgeBarrierEntity
   entity-manager,types (Entity)
   powerup-spawn,types + entity (createPickupEntity)
   powerup-collision,types (Entity + PickupEvent)
@@ -39,7 +40,7 @@ modules[22]{module,depends_on}:
   menu-state,types + racing-state + ui-text
   zone-effects,types (Entity + PowerupDefinition)
   entity-lifetime,types (Entity)
-  registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag
+  registry,types (PowerupDefinition) + definitions/tailwind-boost + definitions/anchor-drag + definitions/oil-slick + definitions/canal-lock + definitions/draft-shield
 ```
 
 ## Assets

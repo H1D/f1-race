@@ -80,21 +80,23 @@ export function renderZones(
       fadeMul = Math.max(0, entity.lifetime.remaining / entity.lifetime.fadeStart);
     }
 
+    const zoneColor = zone.color ?? "rgba(255, 100, 0, 1)";
+
     ctx.save();
-    ctx.globalAlpha = 0.15 * fadeMul;
+    ctx.globalAlpha = 0.4 * fadeMul;
 
     // Filled zone circle
     ctx.beginPath();
     ctx.arc(x, y, zone.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 100, 0, 1)";
+    ctx.fillStyle = zoneColor;
     ctx.fill();
 
     // Subtle border ring
     ctx.beginPath();
     ctx.arc(x, y, zone.radius, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 100, 0, 1)";
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.3 * fadeMul;
+    ctx.strokeStyle = zoneColor;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.7 * fadeMul;
     ctx.stroke();
 
     ctx.restore();

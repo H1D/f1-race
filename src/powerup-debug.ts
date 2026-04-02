@@ -80,9 +80,10 @@ export function createPowerupDebugSection(ctx: PowerupDebugContext): HTMLElement
 
   powerupsBody.appendChild(spawnBtns);
 
-  // --- Powerup tabs (one per definition) ---
+  // --- Powerup tabs (one per player-facing definition; skip internal zone effects) ---
   const tabs: { label: string; content: HTMLElement }[] = [];
   for (const [, def] of ctx.powerupDefs) {
+    if (def.rarity <= 0) continue;
     const content = document.createElement("div");
     content.className = "dbg-tab-content";
 
