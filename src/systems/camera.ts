@@ -2,11 +2,11 @@ import type { CameraState, Entity } from "../types";
 
 const CAMERA_LERP = 0.08;
 const LOOK_AHEAD = 80;
-const ZOOM_SPRING_STIFFNESS = 0.64; // how fast zoom snaps toward target (~5s settle)
-const ZOOM_SPRING_DAMPING = 1.6; // how quickly oscillation settles (critically damped)
+const ZOOM_SPRING_STIFFNESS = 14.0; // how fast zoom snaps toward target
+const ZOOM_SPRING_DAMPING = 8.0;   // how quickly oscillation settles (~critically damped, ~0.7s)
 const BBOX_PADDING = 400;
 const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 1.3;
+const MAX_ZOOM = 2.0;
 const TRANSITION_MS = 500;
 const TRANSITION_LERP = 0.25; // fast lerp used during transition
 
