@@ -1,0 +1,16 @@
+project: boat-race
+type: typescript/canvas
+framework: none (vanilla Canvas 2D)
+runtime: bun
+updated: 2026-04-02
+
+features[4]{name,path,status,layer}:
+  boat-physics,.ai/docs/features/boat-physics.md,active,frontend
+  racing,.ai/docs/features/racing.md,active,frontend
+  track,.ai/docs/features/track.md,wip,frontend
+  input,.ai/docs/features/input.md,stable,frontend
+
+docs[3]{type,path}:
+  architecture,.ai/docs/architecture.md
+  decisions,.ai/docs/decisions.md
+  dependencies,.ai/docs/dependencies.md
