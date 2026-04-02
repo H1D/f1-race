@@ -40,10 +40,10 @@ components[30]{name,type,path,responsibility}:
 
 1. `main.ts` creates canvas, dual-player input system, state manager, and game loop
 2. Game loop ticks at 60Hz — calls `input.update(dt)` then `states.update(dt, dualInput)`
-3. `RacingState.update()` runs physics → `resolveMapCollisions()` → particles for each boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
+3. `RacingState.update()` runs physics → `resolveMapCollisions()` → particles for each boat, then `resolveBoatCollision()` between them, then checkpoint/finish detection, then powerup pipeline → cleanup
 4. Physics: decompose world velocity (vx,vy) into local frame via dot product → anisotropic drag → thrust → recompose to world → cap max speed → integrate
-5. Collision: check boat inside outer polygon + outside island polygon. On hit: push to nearest edge via edge normal, cancel wall-normal velocity, apply tangential friction
-6. Powerup pipeline: spawn pickups (via `trackBoundsFromMap()` adapter) → detect pickup collisions (both boats) → canApply gate → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities
+5. Collision: radius-aware wall check (boat edge, not center) for outer polygon + island. Angle-dependent response: glancing hits deflect, head-on hits push back. Boat-to-boat: circle collision with impulse
+6. Powerup pipeline: spawn pickups (water-only grid points via `isOnWater()`) → detect pickup collisions (both boats) → canApply gate → apply effects → tick effects → expire effects → zone effects → tick lifetimes → cleanup entities
 7. Render phase: clear canvas → `updateCamera(w, h, dt)` → `applyCameraTransform()` → `renderMap()` (land + water + grid + walls + attributes) → zones → pickups → obstacles → particles → both boats → effect visuals → `renderBridges()` (boats pass under) → restore → HUD → effects HUD → pickup toasts → event log
 8. State transitions via `gameCtx.switchState()` (MenuState → RacingState ↔ EditorState)
 

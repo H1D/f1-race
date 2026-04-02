@@ -186,7 +186,7 @@ export interface TrackBounds {
 }
 
 // === Map data ===
-export type AttributeType = "albert-heijn" | "effendi" | "doctor-falafel";
+export type AttributeType = "albert-heijn" | "effendi" | "doctor-falafel" | "herring-kiosk" | "bike-shop" | "cheese-shop";
 
 export interface MapAttribute {
   id: number;
@@ -201,6 +201,13 @@ export interface Bridge {
   width: number;
 }
 
+export interface Gate {
+  a: Vec2;               // left endpoint of the line
+  b: Vec2;               // right endpoint of the line
+}
+
+export type FinishLine = Gate;
+
 export interface MapData {
   outline: Vec2[];       // outer bank of the water channel
   island: Vec2[];        // inner land mass (the center island)
@@ -209,6 +216,8 @@ export interface MapData {
   worldSize: number;
   startPos: Vec2;
   startAngle: number;
+  finishLine: FinishLine;
+  checkpoints: Gate[];     // gates that must be crossed in order before finish counts
 }
 
 // === Powerup definition (data-driven registry) ===

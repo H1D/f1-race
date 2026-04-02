@@ -47,10 +47,10 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 
 **Data flow:**
 1. Game loop ticks 60Hz → `input.update(dt)` → `states.update(dt, dualInput)`
-2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then powerup pipeline → cleanup
+2. RacingState runs `updatePhysics()` + `resolveMapCollisions()` + particle emitters per boat, then `resolveBoatCollision()` between them, then checkpoint/finish/lap tracking, then powerup pipeline → cleanup
 3. Powerup pipeline: spawn (water-only grid points via `isOnWater()`) → detect pickups (both boats) → canApply gate → apply effects → tick → expire → zones → lifetimes → cleanup
 4. Physics: decompose world vel (vx,vy) → local frame → drag → thrust → recompose → max speed cap → integrate
-5. Collision: keep boat inside outer polygon + outside island. Edge-normal push + velocity cancellation + tangential sliding. Boat-to-boat: circle collision with impulse response
+5. Collision: radius-aware wall check (boat edge, not center) for outer polygon + island. Angle-dependent response: glancing hits deflect, head-on hits push back. Boat-to-boat: circle collision with impulse
 6. Render: clear → camera transform → `renderMap()` → zones → pickups → obstacles → particles → boats → effect visuals → `renderBridges()` (boats under) → restore → HUD → effects HUD → pickup toasts → event log
 7. States: MenuState → RacingState ↔ EditorState
 
@@ -62,7 +62,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 - **Anisotropic drag**: Forward drag 0.012 (glide) + lateral drag 0.95 (resist drift), ~79:1 ratio
 - **Dual-mode camera**: Follow mode (rotated, look-ahead) or fixed mode (dynamic zoom, no rotation) — smooth 500ms transition
 - **Shared map singleton**: `getCurrentMap()`/`setCurrentMap()` — RacingState and EditorState access same MapData
-- **Boat-to-boat collision**: Circle-based detection with impulse response + collision sparks
+- **Boat collision**: Radius-aware wall detection (20 units), angle-dependent bounce. Boat-to-boat: circle impulse response + sparks
 - **Polygon maps**: Outer bank + island polygons define river channel, rendered with `arcTo` curves
 - **Freehand → polygon**: Draw → Douglas-Peucker → Chaikin smooth → resample → offset ±90px
 - **Zero-allocation particle pool**: 512 pre-allocated slots reused via `active` flag — no GC pressure
@@ -102,7 +102,7 @@ ECS-lite architecture with a fixed 60Hz timestep game loop. Entities are plain d
 | Feature | Status | Key Files |
 |---------|--------|-----------|
 | Boat Physics | active | `src/systems/physics.ts`, `src/systems/collision.ts`, `src/entity.ts`, `src/debug.ts` |
-| Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` |
+| Racing | active | `src/states/racing-state.ts`, `src/systems/boat-render.ts` — 5-lap race with checkpoints, finish line, timer, win screen |
 | Camera | active | `src/systems/camera.ts` |
 | Powerups | active | `src/powerups/registry.ts`, `src/systems/powerup-effects.ts`, `src/systems/powerup-spawn.ts` — 5 playable powerups (herring-boost=buff, anchor-drag=Bicycle Drag/hazard, oil-slick=weapon, canal-lock=weapon, draft-shield=defensive) |
 | Map Editor | active | `src/editor/editor-state.ts`, `src/editor/toolbar.ts` |

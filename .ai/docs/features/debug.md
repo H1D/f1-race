@@ -14,11 +14,13 @@ files[2]{path,purpose}:
 
 ## Design Notes
 
+- `debugSettings` — exported shared object with `showBoatCollision` flag for rendering collision circles
 - `createDebugMenu(boat1Physics, camera?, boat2Physics?)` — accepts references, mutates directly
 - `createPowerupDebugSection(ctx)` — POWERUPS + GENERAL panels with live state mutation
 - **Camera section**: buttons for Fixed mode, Follow P1, Follow P2 — sets `camera.followTarget`
 - **Per-boat sections**: independent sliders and presets for each boat's physics
 - 4 presets: Yacht (balanced default), Speedboat (fast + grippy), Dinghy (twitchy + drifty), Tugboat (heavy + slow)
+- **Show Collision** checkbox: toggles `debugSettings.showBoatCollision` — renders collision radius circles around boats
 - 7 sliders per boat: forwardDrag, lateralDrag, angularDamping, thrustForce, turnTorque, turnSpeedReference, maxSpeed
 - Reset button snaps back to Yacht defaults (per boat)
 - **Per-powerup tabs**: each tab has core knobs (Duration, Rarity, Max stacks) + auto-generated sliders from `def.tunables` (e.g. speedMult, thrustMult)
